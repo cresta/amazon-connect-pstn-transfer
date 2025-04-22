@@ -175,9 +175,12 @@ The following flow is defined in [VA_PSTN_Transfer.json](./VA_PSTN_Transfer.json
 4. It says the DTMF sequence (for debugging purposes)
 5. Amazon Connect transfers the given phone number and enters the DTMF sequence
     > ![flow](./docs/aws-connect-transfer.png)
-6. Upon closure of that call, Amazon Connect continues the flow and calls the lambda function to fetch the Handoff (including the transfer target).
+6. Upon closure of that call, Amazon Connect continues the flow and calls the lambda function to fetch the Handoff which includes the transfer target.
     > ![flow](./docs/aws-connect-action.png)
+    > - action: `get_handoff_data`
     > - Response validation is set to JSON
+    
+    Note: This will make all Handoff response properties (`handoff_transferTarget`, `handoff_summary`, `handoff_conversation` and `handoff_conversationCorrelationId`) available in the 'External' Namespace. Only `handoff_transferTarget` is used in this example flow.
 7.  The transfer target is returned as an attribute
     > `handoff_transferTarget`
     > ![flow](./docs/aws-connect-target.png)
