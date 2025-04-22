@@ -1,0 +1,34 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/main.go",
+            "env": {
+                "_LAMBDA_SERVER_PORT": "8080",
+                "apiKey": "${input:apiKey}"
+            },
+            "args": []
+        }
+    ],
+    "inputs": [
+        {
+            "type": "promptString",
+            "id": "apiKey",
+            "description": "Enter the Cresta voice-staging API key.",
+            "default": ""
+        }
+    ],
+    "compounds": [
+        {
+            "name": "build and debug",
+            "configurations": [
+                "Launch"
+            ],
+            "preLaunchTask": "build-debug"
+        }
+    ]
+}

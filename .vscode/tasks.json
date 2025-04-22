@@ -1,0 +1,42 @@
+{
+    "version": "2.0.0",
+    "inputs": [
+        {
+            "id": "json",
+            "type": "command",
+            "command": "filePicker.pick",
+            "args": {
+                "masks": "events/*.json",
+                "display": {
+                    "type": "fileName",
+                    "json": "name"
+                },
+                "output": "fileRelativePath"
+            }
+        }
+    ],
+    "tasks": [
+        {
+            "label": "build-debug",
+            "type": "shell",
+            "command": "go build -v -gcflags='all=-N -l' main.go",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        },
+        {
+            "label": "build-lambda",
+            "type": "shell",
+            "command": "GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o bootstrap main.go && zip -j aws-lambda-connect-pstn-transfer.zip bootstrap",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        },
+        {
+            "label": "event",
+            "type": "shell",
+            "command": "go install github.com/blmayer/awslambdarpc && awslambdarpc -e ${input:json}",
+            "problemMatcher": []
+        }
+    ]
+}
