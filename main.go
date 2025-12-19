@@ -102,7 +102,7 @@ func getHandoffData(ctx context.Context, apiKey, domain, customer, profile strin
 		return nil, err
 	}
 
-	var result *events.FetchAIAgentHandoffResponse
+	var result *FetchAIAgentHandoffResponse
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("error marshalling response body: %v", err)
 	}
