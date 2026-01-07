@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -55,11 +56,32 @@ func makeHTTPRequest(ctx context.Context, method, url string, apiKey string, pay
 	return io.ReadAll(resp.Body)
 }
 
-func getPSTNTransferData(ctx context.Context, apiKey, domain, virtualAgentName string, eventData *events.ConnectContactData) (*events.ConnectResponse, error) {
+func getPSTNTransferData(ctx context.Context, apiKey, domain, virtualAgentName string, details *events.ConnectDetails) (*events.ConnectResponse, error) {
 	url := fmt.Sprintf("%s/v1/%s:generatePSTNTransferData", domain, virtualAgentName)
+
+	// Filter out apiDomain, action, apiKey, and virtualAgentName from parameters
+	filteredKeys := []string{"apiDomain", "action", "apiKey", "virtualAgentName"}
+	filteredParameters := copyMap(details.Parameters, filteredKeys)
+
+	eventDataJSON, err := json.Marshal(details.ContactData)
+	if err != nil {
+		return nil, fmt.Errorf("error marshalling ContactData: %v", err)
+	}
+	var eventDataMap map[string]any
+	if err := json.Unmarshal(eventDataJSON, &eventDataMap); err != nil {
+		return nil, fmt.Errorf("error unmarshalling ContactData: %v", err)
+	}
+
+	// Merge ContactData with parameters as a sub-field of ccaasMetadata
+	ccaasMetadata := make(map[string]any)
+	for k, v := range eventDataMap {
+		ccaasMetadata[k] = v
+	}
+	ccaasMetadata["parameters"] = filteredParameters
+
 	payload := map[string]any{
-		"callId":             eventData.ContactID,
-		"ccaasMetadata":      eventData,
+		"callId":             details.ContactData.ContactID,
+		"ccaasMetadata":      ccaasMetadata,
 		"supportedDtmfChars": "0123456789*",
 	}
 
@@ -143,7 +165,7 @@ func handler(ctx context.Context, event events.ConnectEvent) (events.ConnectResp
 
 	switch action {
 	case "get_pstn_transfer_data":
-		result, err = getPSTNTransferData(ctx, apiKey, domain, virtualAgentName, &event.Details.ContactData)
+		result, err = getPSTNTransferData(ctx, apiKey, domain, virtualAgentName, &event.Details)
 	case "get_handoff_data":
 		result, err = getHandoffData(ctx, apiKey, domain, customer, profile, &event.Details.ContactData)
 	default:
@@ -165,6 +187,18 @@ func getFromEventParameterOrEnv(event events.ConnectEvent, key, defaultValue str
 		return value
 	}
 	return defaultValue
+}
+
+// 1. Copy the map without the keys in filteredKeys.
+// 2. Convert the value type to interface{}.
+func copyMap(original map[string]string, filteredKeys []string) map[string]any {
+	copy := make(map[string]any)
+	for k, v := range original {
+		if !slices.Contains(filteredKeys, k) {
+			copy[k] = v
+		}
+	}
+	return copy
 }
 
 func main() {

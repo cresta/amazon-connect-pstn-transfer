@@ -55,7 +55,8 @@ The Lambda function expects an Amazon Connect event with the following structure
     "Parameters": {
       "action": "get_pstn_transfer_data",
       "virtualAgentName": "customers/example/profiles/default/virtualAgents/agent1",
-      "apiDomain": "https://api.example.com"
+      "apiDomain": "https://api.example.com",
+      "customParameter": "somecustomvaluethatispassedasmetadata"
     }
   }
 }
