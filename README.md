@@ -1,6 +1,6 @@
 # AWS Connect PSTN Transfer
 
-[![Deploy with CloudFormation](https://img.shields.io/badge/Deploy%20with-AWS%20CloudFormation-orange?logo=amazon-aws)](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https://raw.githubusercontent.com/cresta/amazon-connect-pstn-transfer/refs/heads/main/cloudformation/template.yaml&stackName=aws-lambda-connect-pstn-transfer)
+[![CloudFormation Template](https://img.shields.io/badge/View-CloudFormation%20Template-blue?logo=amazon-aws)](https://github.com/cresta/amazon-connect-pstn-transfer/blob/main/cloudformation/template.yaml)
 
 This repo contains the required AWS resources for doing a transfer using PSTN only
 
@@ -154,6 +154,10 @@ The deployment script will:
 3. Create or update the IAM role with necessary permissions
 4. Create or update the Lambda function
 5. Configure environment variables from `var.json`
+
+### CloudFormation Deployment
+
+The project includes a CloudFormation template for infrastructure-as-code deployment. See the [CloudFormation README](./cloudformation/README.md) for detailed instructions.
 
 
 ### Local Development

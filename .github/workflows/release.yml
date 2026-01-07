@@ -7,10 +7,7 @@ on:
 jobs:
   build:
     name: Build Lambda Deployment Package
-    runs-on:
-      group: self-hosted
-      labels: cpu
-
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
