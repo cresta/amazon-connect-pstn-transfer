@@ -1,6 +1,6 @@
 # AWS Connect PSTN Transfer
 
-[![Deploy with CloudFormation](https://img.shields.io/badge/Deploy%20with-AWS%20CloudFormation-orange?logo=amazon-aws)](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https://raw.githubusercontent.com/cresta/aws-connect-lambda/main/cloudformation/template.yaml&stackName=aws-lambda-connect-pstn-transfer)
+[![Deploy with CloudFormation](https://img.shields.io/badge/Deploy%20with-AWS%20CloudFormation-orange?logo=amazon-aws)](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https://raw.githubusercontent.com/cresta/amazon-connect-pstn-transfer/refs/heads/main/cloudformation/template.yaml&stackName=aws-lambda-connect-pstn-transfer)
 
 This repo contains the required AWS resources for doing a transfer using PSTN only
 
