@@ -55,12 +55,19 @@ The `deploy-cloudformation.sh` script automates the build, upload, and deploymen
 ```
 
 The script will:
-1. Check for existing `parameters.json` file (if found, it will read values from it and ask for confirmation)
-2. Prompt for any missing values if `parameters.json` doesn't exist
-3. Build the Lambda function for Linux ARM64
-4. Create a deployment package (zip)
-5. Upload the package to S3
-6. Create or update the CloudFormation stack using inline parameters
+1. Prompt for all required values:
+   - CloudFormation stack name (required)
+   - API Key (required)
+   - Virtual Agent Name (required)
+   - API Domain (optional, defaults to `https://api.us-west-2-prod.cresta.com`)
+   - S3 bucket name (required)
+   - S3 key (optional, defaults to `aws-lambda-connect-pstn-transfer.zip`)
+   - Lambda function name (optional, defaults to `aws-lambda-connect-pstn-transfer`)
+   - IAM role name (optional, defaults to `aws-lambda-connect-pstn-transfer-role`)
+2. Build the Lambda function for Linux ARM64
+3. Create a deployment package (zip)
+4. Upload the package to S3
+5. Create or update the CloudFormation stack using inline parameters
 
-**Note:** The script reads from `parameters.json` if it exists, but does not write to it. For manual deployments using AWS CLI, use `parameters.json` as shown above.
+**Note:** The script prompts for all values interactively. For automated deployments or CI/CD pipelines, use `parameters.json` with AWS CLI as shown above.
 
