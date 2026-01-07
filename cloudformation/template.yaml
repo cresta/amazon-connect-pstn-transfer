@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "AWS Lambda function for Amazon Connect PSTN Transfer"
+
+Parameters:
+  ApiKey:
+    Type: String
+    NoEcho: true
+    Description: API Key for authentication with the Cresta API
+    MinLength: 1
+
+  VirtualAgentName:
+    Type: String
+    Description: "Resource name of the virtual agent. Format: customers/{customer}/profiles/{profile}/virtualAgents/{virtualAgentID}"
+    MinLength: 1
+
+  ApiDomain:
+    Type: String
+    Description: "Domain of the Cresta API. Typically https://api.${cluster}.cresta.com"
+    Default: "https://api.us-west-2-prod.cresta.com"
+
+  CodeS3Bucket:
+    Type: String
+    Description: S3 bucket name containing the Lambda deployment package
+    MinLength: 1
+
+  CodeS3Key:
+    Type: String
+    Description: S3 key (path) to the Lambda deployment package (zip file)
+    Default: "aws-lambda-connect-pstn-transfer.zip"
+    MinLength: 1
+
+  FunctionName:
+    Type: String
+    Description: Name for the Lambda function
+    Default: "aws-lambda-connect-pstn-transfer"
+
+  RoleName:
+    Type: String
+    Description: Name for the IAM role
+    Default: "aws-lambda-connect-pstn-transfer-role"
+
+Resources:
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref RoleName
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: Name
+          Value: !Sub "${RoleName}"
+
+  ConnectPSTNTransferFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Ref FunctionName
+      Runtime: provided.al2023
+      Handler: bootstrap
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !Ref CodeS3Bucket
+        S3Key: !Ref CodeS3Key
+      Architectures:
+        - arm64
+      Environment:
+        Variables:
+          apiKey: !Ref ApiKey
+          virtualAgentName: !Ref VirtualAgentName
+          apiDomain: !Ref ApiDomain
+      Tags:
+        - Key: Name
+          Value: !Sub "${FunctionName}"
+
+Outputs:
+  LambdaFunctionArn:
+    Description: ARN of the Lambda function
+    Value: !GetAtt ConnectPSTNTransferFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-LambdaFunctionArn"
+
+  LambdaFunctionName:
+    Description: Name of the Lambda function
+    Value: !Ref ConnectPSTNTransferFunction
+    Export:
+      Name: !Sub "${AWS::StackName}-LambdaFunctionName"
+
+  IAMRoleArn:
+    Description: ARN of the IAM role
+    Value: !GetAtt LambdaExecutionRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-IAMRoleArn"

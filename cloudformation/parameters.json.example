@@ -1,0 +1,31 @@
+[
+  {
+    "ParameterKey": "ApiKey",
+    "ParameterValue": "your-api-key-here"
+  },
+  {
+    "ParameterKey": "VirtualAgentName",
+    "ParameterValue": "customers/{customer}/profiles/{profile}/virtualAgents/{virtualAgentID}"
+  },
+  {
+    "ParameterKey": "ApiDomain",
+    "ParameterValue": "https://api.us-west-2-prod.cresta.com"
+  },
+  {
+    "ParameterKey": "CodeS3Bucket",
+    "ParameterValue": "your-s3-bucket-name"
+  },
+  {
+    "ParameterKey": "CodeS3Key",
+    "ParameterValue": "aws-lambda-connect-pstn-transfer.zip"
+  },
+  {
+    "ParameterKey": "FunctionName",
+    "ParameterValue": "aws-lambda-connect-pstn-transfer"
+  },
+  {
+    "ParameterKey": "RoleName",
+    "ParameterValue": "aws-lambda-connect-pstn-transfer-role"
+  }
+]
+
