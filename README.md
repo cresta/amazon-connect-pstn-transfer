@@ -38,10 +38,23 @@ The function accepts the following parameters (either through event parameters o
 It is recommended to only set `action` via parameter and the rest via environment variable.
 
 - **action**: The action to perform, either `get_pstn_transfer_data` or `get_handoff_data`. Defaults to `get_pstn_transfer_data`
-
-- **apiDomain**: The domain of the Cresta API. Typically `https://api.${cluster}.cresta.com`. Defaults to `https://api.us-west-2-prod.cresta.com`
-- **apiKey**: API key for authentication.
+- **region**: AWS region with suffix (e.g., `us-west-2-prod` or `us-west-2-staging`). If not provided, will be extracted from `apiDomain`
 - **virtualAgentName**: The resourcename of the virtual agent the call is transferred to. Format: `customers/{customer}/profiles/{profile}/virtualAgents/{virtualAgentID}`
+
+- **apiDomain**: ⚠️ **DEPRECATED** - The domain of the Cresta API. Typically `https://api.${cluster}.cresta.ai`. If not provided, will be constructed from `region` (defaults to `https://api.us-west-2-prod.cresta.ai`). Use `region` instead.
+
+#### Authentication
+
+The function supports two authentication methods. You must provide credentials for one of them:
+
+**Option 1: OAuth 2 Client Credentials Flow** ✅ **RECOMMENDED**
+- **oauthClientId**: OAuth 2 client ID
+- **oauthClientSecret**: OAuth 2 client secret
+
+**Option 2: API Key Authentication** ⚠️ **DEPRECATED**
+- **apiKey**: ⚠️ **DEPRECATED** - API key for authentication with the Cresta API. Use OAuth 2 authentication instead.
+
+> **Note**: `apiDomain` and `apiKey` are deprecated. Please migrate to using `region` and OAuth 2 authentication (`oauthClientId`/`oauthClientSecret`) for better security and maintainability.
 
 ### Usage
 
@@ -57,12 +70,35 @@ The Lambda function expects an Amazon Connect event with the following structure
     "Parameters": {
       "action": "get_pstn_transfer_data",
       "virtualAgentName": "customers/example/profiles/default/virtualAgents/agent1",
-      "apiDomain": "https://api.example.com",
-      "customParameter": "somecustomvaluethatispassedasmetadata"
+      "region": "us-west-2-prod",
+      "oauthClientId": "your-client-id",
+      "oauthClientSecret": "your-client-secret",
+      "customParameter": "some_custom_value_that_will_be_passed_as_metadata"
     }
   }
 }
 ```
+
+**Example with deprecated API Key authentication (not recommended):**
+```json
+{
+  "Details": {
+    "ContactData": {
+      "ContactId": "...",
+      // Other contact data from
+    },
+    "Parameters": {
+      "action": "get_pstn_transfer_data",
+      "virtualAgentName": "customers/example/profiles/default/virtualAgents/agent1",
+      "region": "us-west-2-prod",
+      "apiDomain": "https://api.us-west-2-prod.cresta.ai",
+      "apiKey": "your-api-key",
+      "customParameter": "some_custom_value_that_will_be_passed_as_metadata"
+    }
+  }
+}
+```
+
 
 #### Supported Actions
 
@@ -103,31 +139,47 @@ e.g.
 
 The project includes VS Code configurations for optimal development:
 
-1. **Recommended Extensions**:
+1. **Required Extensions**:
+   - **dfarley1.file-picker**: Required for the `event` task to select test event files. VS Code should prompt you to install this when opening the workspace. Otherwise you can install vsix in the `.vscode` folder.
+
+2. **Recommended Extensions**:
    - Install the recommended Go extensions for VS Code
 
-2. **Debugging**:
+3. **Debugging**:
    The project includes launch configurations for debugging your Lambda function locally.
 
-3. **Tasks**:
-   Predefined tasks are available for building and testing the application.
+4. **Tasks**:
+   Predefined tasks are available for building and testing the application. The `event` task requires the `dfarley1.file-picker` extension to select test event files.
 
 ## Deployment
 
 ### Environment Configuration
 
 Create a `var.json` file in the project root with your environment variables:
+
+**Recommended (OAuth 2 authentication):**
 ```json
 {
     "virtualAgentName": "your-virtual-agent-resource-name",
-    "apiDomain": "your-api-domain",
+    "region": "us-west-2-prod",
+    "oauthClientId": "your-client-id",
+    "oauthClientSecret": "your-client-secret"
+}
+```
+
+**Deprecated (API Key authentication):**
+```json
+{
+    "virtualAgentName": "your-virtual-agent-resource-name",
+    "region": "us-west-2-prod",
+    "apiDomain": "https://api.us-west-2-prod.cresta.ai",
     "apiKey": "your-api-key"
 }
 ```
 
 ### Manual Deployment
 
-The project includes a `deploy.sh` script that handles the entire deployment process:
+The project includes a `deploy.sh` script in the `scripts` folder that handles the entire deployment process:
 
 It creates a
 - **IAM Role**: `aws-lambda-connect-pstn-transfer-role`
@@ -140,9 +192,11 @@ It creates a
 
 ```bash
 # Make the script executable
+cd scripts
 chmod +x deploy.sh
 
 # Run the deployment
+cd scripts
 PROFILE=<some-aws-profile>
 eval "$(aws configure export-credentials --profile $PROFILE --format env)"
 ./deploy.sh
@@ -162,14 +216,17 @@ The project includes a CloudFormation template for infrastructure-as-code deploy
 
 ### Local Development
 
-1. Export `apiKey` for the given cluster & customer: `export apiKey=<apiKey>`
-2. Run the `build and debug` function through VS Code's debugger after making changes
-3. Use the provided test event in `events/test.json` via `cmd + shift P -> Run Task -> event`
-4. Check the debug console for output and response
+1. Export authentication credentials:
+   - **Recommended**: For OAuth 2: `export oauthClientId=<client-id>` and `export oauthClientSecret=<client-secret>`
+   - **Deprecated**: For API key: `export apiKey=<apiKey>`
+2. Export other required variables: `export region=<region>` (e.g., `us-west-2-prod`). `apiDomain` is deprecated and will be constructed from `region` if not provided.
+3. Run the `build and debug` function through VS Code's debugger after making changes
+4. Use the provided test event in `events/test.json` via `cmd + shift P -> Run Task -> event`
+5. Check the debug console for output and response
 
 ## Connect Flow
 
-The following flow is defined in [VA_PSTN_Transfer.json](./VA_PSTN_Transfer.json)
+The following flow is defined in [./docs/VA_PSTN_Transfer.json](./docs/VA_PSTN_Transfer.json)
 
 ![flow](./docs/aws-connect-flow.png)
 

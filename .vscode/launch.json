@@ -6,10 +6,12 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/main.go",
+            "program": "${workspaceFolder}/.",
             "env": {
                 "_LAMBDA_SERVER_PORT": "8080",
-                "apiKey": "${input:apiKey}"
+                "oauthClientId": "${input:oauthClientId}",
+                "oauthClientSecret": "${input:oauthClientSecret}",
+                "region": "${input:region}"
             },
             "args": []
         }
@@ -17,9 +19,21 @@
     "inputs": [
         {
             "type": "promptString",
-            "id": "apiKey",
-            "description": "Enter the Cresta voice-staging API key.",
+            "id": "oauthClientId",
+            "description": "Enter the OAuth 2 Client ID.",
             "default": ""
+        },
+        {
+            "type": "promptString",
+            "id": "oauthClientSecret",
+            "description": "Enter the OAuth 2 Client Secret.",
+            "default": ""
+        },
+        {
+            "type": "promptString",
+            "id": "region",
+            "description": "Enter the region (e.g., us-west-2-prod, voice-prod, chat-prod).",
+            "default": "us-west-2-prod"
         }
     ],
     "compounds": [

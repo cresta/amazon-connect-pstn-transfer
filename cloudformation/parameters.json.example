@@ -1,15 +1,19 @@
 [
   {
-    "ParameterKey": "ApiKey",
-    "ParameterValue": "your-api-key-here"
+    "ParameterKey": "OAuthClientId",
+    "ParameterValue": "your-oauth-client-id"
+  },
+  {
+    "ParameterKey": "OAuthClientSecret",
+    "ParameterValue": "your-oauth-client-secret"
   },
   {
     "ParameterKey": "VirtualAgentName",
     "ParameterValue": "customers/{customer}/profiles/{profile}/virtualAgents/{virtualAgentID}"
   },
   {
-    "ParameterKey": "ApiDomain",
-    "ParameterValue": "https://api.us-west-2-prod.cresta.com"
+    "ParameterKey": "Region",
+    "ParameterValue": "us-west-2-prod"
   },
   {
     "ParameterKey": "CodeS3Bucket",
