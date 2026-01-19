@@ -16,12 +16,14 @@ type HTTPClient interface {
 
 // APIClient handles HTTP requests to the Cresta API.
 type APIClient struct {
+	logger *Logger
 	client HTTPClient
 }
 
 // NewAPIClient creates a new API client with the default HTTP client.
-func NewAPIClient() *APIClient {
+func NewAPIClient(logger *Logger) *APIClient {
 	return &APIClient{
+		logger: logger,
 		client: http.DefaultClient,
 	}
 }
@@ -32,7 +34,7 @@ func (c *APIClient) MakeRequest(ctx context.Context, method, url string, apiKey 
 	if err != nil {
 		return nil, fmt.Errorf("error marshalling payload: %v", err)
 	}
-	fmt.Printf("Sending request to %s with payload: %s\n", url, string(jsonData))
+	c.logger.Debugf("Sending request to %s with payload: %s", url, string(jsonData))
 
 	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(jsonData))
 	if err != nil {
@@ -65,6 +67,7 @@ func (c *APIClient) MakeRequest(ctx context.Context, method, url string, apiKey 
 
 // MakeHTTPRequest is a convenience function that uses the default API client.
 func MakeHTTPRequest(ctx context.Context, method, url string, apiKey string, oauthToken string, payload any) ([]byte, error) {
-	client := NewAPIClient()
+	logger := NewLogger()
+	client := NewAPIClient(logger)
 	return client.MakeRequest(ctx, method, url, apiKey, oauthToken, payload)
 }

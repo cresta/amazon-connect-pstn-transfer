@@ -10,13 +10,15 @@ import (
 
 // Handlers contains handler functions for different API actions.
 type Handlers struct {
+	logger    *Logger
 	apiClient *APIClient
 }
 
 // NewHandlers creates a new Handlers instance.
-func NewHandlers() *Handlers {
+func NewHandlers(logger *Logger) *Handlers {
 	return &Handlers{
-		apiClient: NewAPIClient(),
+		logger:    logger,
+		apiClient: NewAPIClient(logger),
 	}
 }
 
@@ -50,7 +52,7 @@ func (h *Handlers) GetPSTNTransferData(ctx context.Context, apiKey, oauthToken, 
 		"supportedDtmfChars": "0123456789*",
 	}
 
-	fmt.Printf("Making request to %s with payload: %+v\n", url, payload)
+	h.logger.Debugf("Making request to %s with payload: %+v", url, payload)
 
 	body, err := h.apiClient.MakeRequest(ctx, "POST", url, apiKey, oauthToken, payload)
 	if err != nil {
@@ -62,7 +64,7 @@ func (h *Handlers) GetPSTNTransferData(ctx context.Context, apiKey, oauthToken, 
 		return nil, fmt.Errorf("error parsing response JSON: %v", err)
 	}
 
-	fmt.Printf("Received response: %+v\n", result)
+	h.logger.Debugf("Received response: %+v", result)
 	return result, nil
 }
 
@@ -73,7 +75,7 @@ func (h *Handlers) GetHandoffData(ctx context.Context, apiKey, oauthToken, domai
 		"correlationId": eventData.ContactID,
 	}
 
-	fmt.Printf("Making request to %s with payload: %+v\n", url, payload)
+	h.logger.Debugf("Making request to %s with payload: %+v", url, payload)
 
 	body, err := h.apiClient.MakeRequest(ctx, "POST", url, apiKey, oauthToken, payload)
 	if err != nil {
@@ -82,9 +84,9 @@ func (h *Handlers) GetHandoffData(ctx context.Context, apiKey, oauthToken, domai
 
 	var result *FetchAIAgentHandoffResponse
 	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("error marshalling response body: %v", err)
+		return nil, fmt.Errorf("error unmarshalling response body: %v", err)
 	}
-	fmt.Printf("Received response: %+v\n", result)
+	h.logger.Debugf("Received response: %+v", result)
 
 	return &events.ConnectResponse{
 		"handoff_conversation":              result.Handoff.Conversation,

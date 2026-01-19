@@ -191,12 +191,10 @@ It creates a
 
 
 ```bash
-# Make the script executable
+# Make the script executable and run the deployment
 cd scripts
 chmod +x deploy.sh
 
-# Run the deployment
-cd scripts
 PROFILE=<some-aws-profile>
 eval "$(aws configure export-credentials --profile $PROFILE --format env)"
 ./deploy.sh

@@ -108,8 +108,11 @@ func (s *HandlersTestSuite) TestGetPSTNTransferData() {
 			}))
 			defer server.Close()
 
+			logger := NewLogger()
 			handlers := &Handlers{
+				logger: logger,
 				apiClient: &APIClient{
+					logger: logger,
 					client: &http.Client{},
 				},
 			}
@@ -210,8 +213,11 @@ func (s *HandlersTestSuite) TestGetHandoffData() {
 			}))
 			defer server.Close()
 
+			logger := NewLogger()
 			handlers := &Handlers{
+				logger: logger,
 				apiClient: &APIClient{
+					logger: logger,
 					client: &http.Client{},
 				},
 			}

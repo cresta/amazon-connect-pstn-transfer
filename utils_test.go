@@ -143,20 +143,20 @@ func (s *UtilsTestSuite) TestCopyMap() {
 
 func (s *UtilsTestSuite) TestParseVirtualAgentName() {
 	tests := []struct {
-		name             string
-		virtualAgentName string
-		wantCustomer     string
-		wantProfile      string
+		name               string
+		virtualAgentName   string
+		wantCustomer       string
+		wantProfile        string
 		wantVirtualAgentID string
-		wantErr          bool
+		wantErr            bool
 	}{
 		{
-			name:             "valid virtual agent name",
-			virtualAgentName: "customers/test-customer/profiles/test-profile/virtualAgents/test-agent",
-			wantCustomer:     "test-customer",
-			wantProfile:      "test-profile",
+			name:               "valid virtual agent name",
+			virtualAgentName:   "customers/test-customer/profiles/test-profile/virtualAgents/test-agent",
+			wantCustomer:       "test-customer",
+			wantProfile:        "test-profile",
 			wantVirtualAgentID: "test-agent",
-			wantErr:          false,
+			wantErr:            false,
 		},
 		{
 			name:             "invalid format - too few parts",
@@ -197,9 +197,9 @@ func (s *UtilsTestSuite) TestParseVirtualAgentName() {
 
 func (s *UtilsTestSuite) TestBuildAPIDomainFromRegion() {
 	tests := []struct {
-		name     string
-		region   string
-		want     string
+		name   string
+		region string
+		want   string
 	}{
 		{
 			name:   "region with -prod suffix",

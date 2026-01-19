@@ -10,14 +10,17 @@ import (
 
 // HandlerService contains dependencies for the Lambda handler.
 type HandlerService struct {
+	logger       *Logger
 	handlers     *Handlers
 	tokenFetcher OAuth2TokenFetcher
 }
 
 // NewHandlerService creates a new HandlerService with default dependencies.
 func NewHandlerService() *HandlerService {
+	logger := NewLogger()
 	return &HandlerService{
-		handlers:     NewHandlers(),
+		logger:       logger,
+		handlers:     NewHandlers(logger),
 		tokenFetcher: NewOAuth2TokenFetcher(),
 	}
 }
@@ -28,7 +31,7 @@ func handler(ctx context.Context, event events.ConnectEvent) (events.ConnectResp
 
 // Handle processes the Lambda event and returns a response.
 func (s *HandlerService) Handle(ctx context.Context, event events.ConnectEvent) (events.ConnectResponse, error) {
-	fmt.Printf("Received event: %+v\n", event)
+	s.logger.Debugf("Received event: %+v", event)
 
 	var result *events.ConnectResponse
 	var err error
@@ -74,10 +77,10 @@ func (s *HandlerService) Handle(ctx context.Context, event events.ConnectEvent) 
 		if err != nil {
 			return nil, fmt.Errorf("error getting OAuth 2 token: %v", err)
 		}
-		fmt.Printf("Using OAuth 2 authentication\n")
+		s.logger.Infof("Using OAuth 2 authentication")
 	} else if apiKey != "" {
 		// Use API key authentication (deprecated)
-		fmt.Printf("Using API key authentication (deprecated)\n")
+		s.logger.Infof("Using API key authentication (deprecated)")
 	} else {
 		return nil, fmt.Errorf("either apiKey (deprecated) or oauthClientId/oauthClientSecret must be provided")
 	}
@@ -87,10 +90,10 @@ func (s *HandlerService) Handle(ctx context.Context, event events.ConnectEvent) 
 		return nil, fmt.Errorf("virtualAgentName is required")
 	}
 
-	fmt.Printf("Domain: %s, Region: %s, Action: %s, Virtual Agent Name: %s\n", domain, region, action, virtualAgentName)
+	s.logger.Infof("Domain: %s, Region: %s, Action: %s, Virtual Agent Name: %s", domain, region, action, virtualAgentName)
 	customer, profile, _, err := ParseVirtualAgentName(virtualAgentName)
 	if err != nil {
-		fmt.Printf("Error parsing virtual agent name: %v\n", err)
+		s.logger.Errorf("Error parsing virtual agent name: %v", err)
 		return nil, err
 	}
 

@@ -211,8 +211,10 @@ func (s *MainTestSuite) TestHandlerService_Handle() {
 				defer server.Close()
 			}
 
+			logger := NewLogger()
 			service := &HandlerService{
-				handlers: NewHandlers(),
+				logger:   logger,
+				handlers: NewHandlers(logger),
 				tokenFetcher: &mockTokenFetcher{
 					token: tt.mockToken,
 					err:   tt.tokenErr,

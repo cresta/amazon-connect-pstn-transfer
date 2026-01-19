@@ -25,7 +25,7 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken() {
 		region         string
 		clientID       string
 		clientSecret   string
-		mockResponse   func(w http.ResponseWriter)
+		mockResponse   func(w http.ResponseWriter, statusCode int)
 		mockStatusCode int
 		wantErr        bool
 		wantToken      string
@@ -37,8 +37,9 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken() {
 			region:       "us-east-1-prod",
 			clientID:     "test-client-id",
 			clientSecret: "test-client-secret",
-			mockResponse: func(w http.ResponseWriter) {
+			mockResponse: func(w http.ResponseWriter, statusCode int) {
 				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(statusCode)
 				json.NewEncoder(w).Encode(map[string]interface{}{
 					"access_token": "test-access-token",
 					"token_type":   "Bearer",
@@ -51,13 +52,14 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken() {
 			wantRegion:     "us-east-1-prod",
 		},
 		{
-			name:         "successful token fetch with empty region uses default",
+			name:         "successful token fetch with provided region",
 			apiDomain:    "https://api.us-west-2-prod.cresta.ai",
 			region:       "us-west-2-prod",
 			clientID:     "test-client-id",
 			clientSecret: "test-client-secret",
-			mockResponse: func(w http.ResponseWriter) {
+			mockResponse: func(w http.ResponseWriter, statusCode int) {
 				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(statusCode)
 				json.NewEncoder(w).Encode(map[string]interface{}{
 					"access_token": "test-access-token",
 					"token_type":   "Bearer",
@@ -75,8 +77,8 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken() {
 			region:       "",
 			clientID:     "test-client-id",
 			clientSecret: "test-client-secret",
-			mockResponse: func(w http.ResponseWriter) {
-				w.WriteHeader(http.StatusUnauthorized)
+			mockResponse: func(w http.ResponseWriter, statusCode int) {
+				w.WriteHeader(statusCode)
 				json.NewEncoder(w).Encode(map[string]string{
 					"error": "invalid_client",
 				})
@@ -91,8 +93,9 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken() {
 			region:       "us-west-2-prod",
 			clientID:     "test-client-id",
 			clientSecret: "test-client-secret",
-			mockResponse: func(w http.ResponseWriter) {
+			mockResponse: func(w http.ResponseWriter, statusCode int) {
 				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(statusCode)
 				json.NewEncoder(w).Encode(map[string]interface{}{
 					"access_token": "test-access-token",
 					"token_type":   "Bearer",
@@ -110,8 +113,9 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken() {
 			region:       "us-west-2-prod",
 			clientID:     "test-client-id",
 			clientSecret: "test-client-secret",
-			mockResponse: func(w http.ResponseWriter) {
+			mockResponse: func(w http.ResponseWriter, statusCode int) {
 				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(statusCode)
 				json.NewEncoder(w).Encode(map[string]interface{}{
 					"access_token": "test-access-token",
 					"token_type":   "Bearer",
@@ -141,8 +145,7 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken() {
 					s.True(ok, "expected Basic Auth to be used")
 					s.Equal(tt.clientID, username)
 					s.Equal(tt.clientSecret, password)
-					w.WriteHeader(tt.mockStatusCode)
-					tt.mockResponse(w)
+					tt.mockResponse(w, tt.mockStatusCode)
 				}))
 				defer server.Close()
 			}

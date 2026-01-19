@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Change to project root directory (parent of scripts directory)
+cd "$(dirname "$0")/.." || exit 1
+
 # Function to extract JSON value
 extract_json_value() {
     local key=$1

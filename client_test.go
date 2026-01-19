@@ -119,7 +119,8 @@ func (s *ClientTestSuite) TestAPIClient_MakeRequest() {
 			}))
 			defer server.Close()
 
-			client := NewAPIClient()
+			logger := NewLogger()
+			client := NewAPIClient(logger)
 			ctx := context.Background()
 			url := server.URL + tt.url
 
@@ -142,7 +143,8 @@ func (s *ClientTestSuite) TestAPIClient_MakeRequest_JSONMarshalling() {
 	}))
 	defer server.Close()
 
-	client := NewAPIClient()
+	logger := NewLogger()
+	client := NewAPIClient(logger)
 	ctx := context.Background()
 
 	// Test with complex payload
