@@ -49,10 +49,10 @@ func (c *retryHTTPClient) Do(req *http.Request) (*http.Response, error) {
 	var err error
 	if req.Body != nil {
 		bodyBytes, err = io.ReadAll(req.Body)
+		_ = req.Body.Close() // Ignore error
 		if err != nil {
 			return nil, fmt.Errorf("error reading request body: %v", err)
 		}
-		req.Body.Close()
 	}
 
 	var lastErr error

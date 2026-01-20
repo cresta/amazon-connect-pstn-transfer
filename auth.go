@@ -138,6 +138,10 @@ func (f *DefaultOAuth2TokenFetcher) GetToken(ctx context.Context, region, client
 		return "", fmt.Errorf("error parsing token response: %v", err)
 	}
 
+	if tokenResponse.AccessToken == "" {
+		return "", fmt.Errorf("missing access_token in token response")
+	}
+
 	// Cache the token
 	if tokenResponse.ExpiresIn > 0 {
 		tokenCache.SetToken(region, clientID, tokenResponse.AccessToken, time.Duration(tokenResponse.ExpiresIn)*time.Second)

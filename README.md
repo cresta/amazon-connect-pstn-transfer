@@ -42,7 +42,7 @@ It is recommended to only set `action` via parameter and the rest via environmen
 - **virtualAgentName**: The resourcename of the virtual agent the call is transferred to. Format: `customers/{customer}/profiles/{profile}/virtualAgents/{virtualAgentID}`. Required.
 - **supportedDtmfChars**: DTMF characters supported for PSTN transfer. Defaults to `"0123456789*"`. Can be configured via event parameter or environment variable.
 
-- **apiDomain**: ⚠️ **DEPRECATED** - The domain of the Cresta API. Typically `https://api.${cluster}.cresta.ai`. If not provided, will be constructed from `region` (defaults to `https://api.us-west-2-prod.cresta.ai`). Use `region` instead.
+- **apiDomain**: ⚠️ **DEPRECATED** - The domain of the Cresta API. For prod regions, typically `https://api.${cluster}.cresta.com`; for staging regions, `https://api.${cluster}.cresta.ai`. If not provided, will be constructed from `region` using `BuildAPIDomainFromRegion` (defaults to `https://api.us-west-2-prod.cresta.com` for prod regions). Use `region` instead.
 
 #### Authentication
 
@@ -173,10 +173,12 @@ Create a `var.json` file in the project root with your environment variables:
 {
     "virtualAgentName": "your-virtual-agent-resource-name",
     "region": "us-west-2-prod",
-    "apiDomain": "https://api.us-west-2-prod.cresta.ai",
+    "apiDomain": "https://api.us-west-2-prod.cresta.com",
     "apiKey": "your-api-key"
 }
 ```
+
+Note: For prod regions (ending in `-prod`), the API domain uses `.cresta.com`; for staging regions, it uses `.cresta.ai`. This matches the behavior of `BuildAPIDomainFromRegion`.
 
 ### Manual Deployment
 

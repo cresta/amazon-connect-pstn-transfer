@@ -128,6 +128,44 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken() {
 			wantToken:      "test-access-token",
 			wantRegion:     "us-west-2-prod",
 		},
+		{
+			name:         "missing access_token in response",
+			apiDomain:    "https://api.us-west-2-prod.cresta.ai",
+			region:       "us-west-2-prod",
+			clientID:     "test-client-id",
+			clientSecret: "test-client-secret",
+			mockResponse: func(w http.ResponseWriter, statusCode int) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(statusCode)
+				json.NewEncoder(w).Encode(map[string]any{
+					"token_type": "Bearer",
+					"expires_in": 3600,
+					// access_token is missing
+				})
+			},
+			mockStatusCode: http.StatusOK,
+			wantErr:        true,
+			wantToken:      "",
+		},
+		{
+			name:         "empty access_token in response",
+			apiDomain:    "https://api.us-west-2-prod.cresta.ai",
+			region:       "us-west-2-prod",
+			clientID:     "test-client-id",
+			clientSecret: "test-client-secret",
+			mockResponse: func(w http.ResponseWriter, statusCode int) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(statusCode)
+				json.NewEncoder(w).Encode(map[string]any{
+					"access_token": "",
+					"token_type":   "Bearer",
+					"expires_in":   3600,
+				})
+			},
+			mockStatusCode: http.StatusOK,
+			wantErr:        true,
+			wantToken:      "",
+		},
 	}
 
 	for _, tt := range tests {
@@ -168,6 +206,9 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken() {
 
 			if tt.wantErr {
 				s.Error(err)
+				if tt.name == "missing access_token in response" || tt.name == "empty access_token in response" {
+					s.Contains(err.Error(), "missing access_token")
+				}
 				return
 			}
 			s.NoError(err)

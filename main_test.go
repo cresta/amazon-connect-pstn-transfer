@@ -38,7 +38,7 @@ func (s *MainTestSuite) TestHandlerService_Handle() {
 		event          events.ConnectEvent
 		mockToken      string
 		tokenErr       error
-		mockResponse   func(w http.ResponseWriter)
+		mockResponse   func(w http.ResponseWriter, statusCode int)
 		mockStatusCode int
 		wantErr        bool
 	}{
@@ -57,8 +57,9 @@ func (s *MainTestSuite) TestHandlerService_Handle() {
 					},
 				},
 			},
-			mockResponse: func(w http.ResponseWriter) {
+			mockResponse: func(w http.ResponseWriter, statusCode int) {
 				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(statusCode)
 				json.NewEncoder(w).Encode(events.ConnectResponse{
 					"phoneNumber":  "+1234567890",
 					"dtmfSequence": "1234",
@@ -83,8 +84,9 @@ func (s *MainTestSuite) TestHandlerService_Handle() {
 				},
 			},
 			mockToken: "test-oauth-token",
-			mockResponse: func(w http.ResponseWriter) {
+			mockResponse: func(w http.ResponseWriter, statusCode int) {
 				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(statusCode)
 				json.NewEncoder(w).Encode(events.ConnectResponse{
 					"phoneNumber":  "+1234567890",
 					"dtmfSequence": "1234",
@@ -110,8 +112,9 @@ func (s *MainTestSuite) TestHandlerService_Handle() {
 				},
 			},
 			mockToken: "test-oauth-token",
-			mockResponse: func(w http.ResponseWriter) {
+			mockResponse: func(w http.ResponseWriter, statusCode int) {
 				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(statusCode)
 				json.NewEncoder(w).Encode(events.ConnectResponse{
 					"phoneNumber":  "+1234567890",
 					"dtmfSequence": "1234",
@@ -134,8 +137,9 @@ func (s *MainTestSuite) TestHandlerService_Handle() {
 					},
 				},
 			},
-			mockResponse: func(w http.ResponseWriter) {
+			mockResponse: func(w http.ResponseWriter, statusCode int) {
 				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(statusCode)
 				json.NewEncoder(w).Encode(FetchAIAgentHandoffResponse{
 					Handoff: Handoff{
 						Conversation:              "conversation-id",
@@ -205,8 +209,7 @@ func (s *MainTestSuite) TestHandlerService_Handle() {
 			var server *httptest.Server
 			if tt.mockResponse != nil {
 				server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					w.WriteHeader(tt.mockStatusCode)
-					tt.mockResponse(w)
+					tt.mockResponse(w, tt.mockStatusCode)
 				}))
 				defer server.Close()
 			}
