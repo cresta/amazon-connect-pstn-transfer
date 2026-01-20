@@ -19,7 +19,7 @@ type TokenCache struct {
 
 type cacheEntry struct {
 	token     string
-	expiresAt time.Time
+	expiresAt time.Time // Token Expiration Time + 5 minute buffer
 }
 
 var tokenCache = &TokenCache{
@@ -28,7 +28,7 @@ var tokenCache = &TokenCache{
 
 // cacheKey generates a cache key from region and clientID.
 func cacheKey(region, clientID string) string {
-	return fmt.Sprintf("%s:%s", region, clientID)
+	return fmt.Sprintf("pstn-transfer:tokencache:%s:%s", region, clientID)
 }
 
 // GetCachedToken returns a valid cached token if available, otherwise returns empty string.
@@ -50,7 +50,7 @@ func (tc *TokenCache) SetToken(region, clientID, token string, expiresIn time.Du
 	key := cacheKey(region, clientID)
 	tc.cache[key] = cacheEntry{
 		token:     token,
-		expiresAt: time.Now().Add(expiresIn - 60*time.Second), // Subtract 1min buffer for safety
+		expiresAt: time.Now().Add(expiresIn - 5*time.Minute), // Subtract 5 minute buffer for safety
 	}
 }
 
@@ -69,15 +69,17 @@ type OAuth2TokenFetcher interface {
 
 // DefaultOAuth2TokenFetcher implements OAuth2TokenFetcher using HTTP client.
 type DefaultOAuth2TokenFetcher struct {
-	client   *http.Client
+	client   HTTPClient
 	tokenURL func(region string) string
 }
 
 // NewOAuth2TokenFetcher creates a new OAuth2TokenFetcher with default configuration.
 // Region should include the suffix (e.g., "us-west-2-prod" or "us-west-2-staging").
+// Uses a retry-enabled HTTP client.
 func NewOAuth2TokenFetcher() *DefaultOAuth2TokenFetcher {
+	logger := NewLogger()
 	return &DefaultOAuth2TokenFetcher{
-		client: http.DefaultClient,
+		client: NewRetryHTTPClient(WithLogger(logger)),
 		tokenURL: func(region string) string {
 			return fmt.Sprintf("https://auth.%s.cresta.ai/v1/oauth/regionalToken", region)
 		},
@@ -112,7 +114,7 @@ func (f *DefaultOAuth2TokenFetcher) GetToken(ctx context.Context, region, client
 
 	resp, err := f.client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("error making token request: %v", err)
+		return "", err
 	}
 	defer resp.Body.Close()
 

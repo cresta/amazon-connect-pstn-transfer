@@ -9,27 +9,25 @@ import (
 	"net/http"
 )
 
-// HTTPClient defines the interface for making HTTP requests.
-type HTTPClient interface {
-	Do(req *http.Request) (*http.Response, error)
-}
-
-// APIClient handles HTTP requests to the Cresta API.
-type APIClient struct {
+// CrestaAPIClient handles HTTP requests to the Cresta API.
+type CrestaAPIClient struct {
 	logger *Logger
 	client HTTPClient
 }
 
-// NewAPIClient creates a new API client with the default HTTP client.
-func NewAPIClient(logger *Logger) *APIClient {
-	return &APIClient{
-		logger: logger,
-		client: http.DefaultClient,
+func NewCrestaAPIClient(logger *Logger, authConfig *AuthConfig) (*CrestaAPIClient, error) {
+	if authConfig == nil {
+		// For CrestaAPIClient, auth is required
+		return nil, fmt.Errorf("authConfig is required for CrestaAPIClient")
 	}
+	client := NewRetryHTTPClient(WithLogger(logger), WithAuth(authConfig))
+	return &CrestaAPIClient{
+		logger: logger,
+		client: client,
+	}, nil
 }
 
-// MakeRequest makes an HTTP request with the given authentication.
-func (c *APIClient) MakeRequest(ctx context.Context, method, url string, apiKey string, oauthToken string, payload any) ([]byte, error) {
+func (c *CrestaAPIClient) MakeRequest(ctx context.Context, method, url string, payload any) ([]byte, error) {
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("error marshalling payload: %v", err)
@@ -41,19 +39,11 @@ func (c *APIClient) MakeRequest(ctx context.Context, method, url string, apiKey 
 		return nil, fmt.Errorf("error creating request: %v", err)
 	}
 
-	// Use OAuth 2 token if provided, otherwise fall back to API key
-	if oauthToken != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", oauthToken))
-	} else if apiKey != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("ApiKey %s", apiKey))
-	} else {
-		return nil, fmt.Errorf("either apiKey or oauthToken must be provided")
-	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("error making HTTP request: %v", err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -63,11 +53,4 @@ func (c *APIClient) MakeRequest(ctx context.Context, method, url string, apiKey 
 	}
 
 	return io.ReadAll(resp.Body)
-}
-
-// MakeHTTPRequest is a convenience function that uses the default API client.
-func MakeHTTPRequest(ctx context.Context, method, url string, apiKey string, oauthToken string, payload any) ([]byte, error) {
-	logger := NewLogger()
-	client := NewAPIClient(logger)
-	return client.MakeRequest(ctx, method, url, apiKey, oauthToken, payload)
 }

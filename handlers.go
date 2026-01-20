@@ -8,29 +8,57 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 )
 
+// FilteredKeys is a map of keys to filter out from parameters
+var FilteredKeys = map[string]bool{
+	"apiDomain":          true,
+	"region":             true,
+	"action":             true,
+	"apiKey":             true,
+	"oauthClientId":      true,
+	"oauthClientSecret":  true,
+	"virtualAgentName":   true,
+	"supportedDtmfChars": true,
+}
+
 // Handlers contains handler functions for different API actions.
 type Handlers struct {
-	logger    *Logger
-	apiClient *APIClient
+	logger             *Logger
+	apiClient          *CrestaAPIClient
+	domain             string
+	customerID         string
+	profileID          string
+	virtualAgentID     string
+	supportedDtmfChars string
+	event              events.ConnectEvent
 }
 
 // NewHandlers creates a new Handlers instance.
-func NewHandlers(logger *Logger) *Handlers {
+func NewHandlers(logger *Logger, authConfig *AuthConfig, domain, customerID, profileID, virtualAgentID, supportedDtmfChars string, event events.ConnectEvent) *Handlers {
+	apiClient, err := NewCrestaAPIClient(logger, authConfig)
+	if err != nil {
+		// This should never happen as authConfig is validated before calling NewHandlers
+		panic(fmt.Sprintf("failed to create APIClient: %v", err))
+	}
 	return &Handlers{
-		logger:    logger,
-		apiClient: NewAPIClient(logger),
+		logger:             logger,
+		apiClient:          apiClient,
+		domain:             domain,
+		customerID:         customerID,
+		profileID:          profileID,
+		virtualAgentID:     virtualAgentID,
+		supportedDtmfChars: supportedDtmfChars,
+		event:              event,
 	}
 }
 
 // GetPSTNTransferData retrieves PSTN transfer data for a given contact.
-func (h *Handlers) GetPSTNTransferData(ctx context.Context, apiKey, oauthToken, domain, virtualAgentName string, details *events.ConnectDetails) (*events.ConnectResponse, error) {
-	url := fmt.Sprintf("%s/v1/%s:generatePSTNTransferData", domain, virtualAgentName)
+func (h *Handlers) GetPSTNTransferData(ctx context.Context) (*events.ConnectResponse, error) {
+	virtualAgentName := fmt.Sprintf("customers/%s/profiles/%s/virtualAgents/%s", h.customerID, h.profileID, h.virtualAgentID)
+	url := fmt.Sprintf("%s/v1/%s:generatePSTNTransferData", h.domain, virtualAgentName)
 
-	// Filter out apiDomain, region, action, apiKey, oauthClientId, oauthClientSecret, and virtualAgentName from parameters
-	filteredKeys := []string{"apiDomain", "region", "action", "apiKey", "oauthClientId", "oauthClientSecret", "virtualAgentName"}
-	filteredParameters := CopyMap(details.Parameters, filteredKeys)
+	filteredParameters := CopyMap(h.event.Details.Parameters, FilteredKeys)
 
-	eventDataJSON, err := json.Marshal(details.ContactData)
+	eventDataJSON, err := json.Marshal(h.event.Details.ContactData)
 	if err != nil {
 		return nil, fmt.Errorf("error marshalling ContactData: %v", err)
 	}
@@ -47,14 +75,14 @@ func (h *Handlers) GetPSTNTransferData(ctx context.Context, apiKey, oauthToken, 
 	ccaasMetadata["parameters"] = filteredParameters
 
 	payload := map[string]any{
-		"callId":             details.ContactData.ContactID,
+		"callId":             h.event.Details.ContactData.ContactID,
 		"ccaasMetadata":      ccaasMetadata,
-		"supportedDtmfChars": "0123456789*",
+		"supportedDtmfChars": h.supportedDtmfChars,
 	}
 
 	h.logger.Debugf("Making request to %s with payload: %+v", url, payload)
 
-	body, err := h.apiClient.MakeRequest(ctx, "POST", url, apiKey, oauthToken, payload)
+	body, err := h.apiClient.MakeRequest(ctx, "POST", url, payload)
 	if err != nil {
 		return nil, err
 	}
@@ -69,15 +97,15 @@ func (h *Handlers) GetPSTNTransferData(ctx context.Context, apiKey, oauthToken, 
 }
 
 // GetHandoffData retrieves handoff data for a given contact.
-func (h *Handlers) GetHandoffData(ctx context.Context, apiKey, oauthToken, domain, customer, profile string, eventData *events.ConnectContactData) (*events.ConnectResponse, error) {
-	url := fmt.Sprintf("%s/v1/customers/%s/profiles/%s/handoffs:fetchAIAgentHandoff", domain, customer, profile)
+func (h *Handlers) GetHandoffData(ctx context.Context) (*events.ConnectResponse, error) {
+	url := fmt.Sprintf("%s/v1/customers/%s/profiles/%s/handoffs:fetchAIAgentHandoff", h.domain, h.customerID, h.profileID)
 	payload := map[string]any{
-		"correlationId": eventData.ContactID,
+		"correlationId": h.event.Details.ContactData.ContactID,
 	}
 
 	h.logger.Debugf("Making request to %s with payload: %+v", url, payload)
 
-	body, err := h.apiClient.MakeRequest(ctx, "POST", url, apiKey, oauthToken, payload)
+	body, err := h.apiClient.MakeRequest(ctx, "POST", url, payload)
 	if err != nil {
 		return nil, err
 	}

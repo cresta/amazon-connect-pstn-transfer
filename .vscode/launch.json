@@ -27,7 +27,8 @@
             "type": "promptString",
             "id": "oauthClientSecret",
             "description": "Enter the OAuth 2 Client Secret.",
-            "default": ""
+            "default": "",
+            "password": true
         },
         {
             "type": "promptString",

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -11,7 +12,6 @@ import (
 // HandlerService contains dependencies for the Lambda handler.
 type HandlerService struct {
 	logger       *Logger
-	handlers     *Handlers
 	tokenFetcher OAuth2TokenFetcher
 }
 
@@ -20,7 +20,6 @@ func NewHandlerService() *HandlerService {
 	logger := NewLogger()
 	return &HandlerService{
 		logger:       logger,
-		handlers:     NewHandlers(logger),
 		tokenFetcher: NewOAuth2TokenFetcher(),
 	}
 }
@@ -64,44 +63,79 @@ func (s *HandlerService) Handle(ctx context.Context, event events.ConnectEvent) 
 		domain = BuildAPIDomainFromRegion(region)
 	}
 
+	// Validate domain to prevent injection attacks
+	if err := ValidateDomain(domain); err != nil {
+		return nil, fmt.Errorf("invalid domain: %v", err)
+	}
+
 	action := GetFromEventParameterOrEnv(event, "action", "")
+	if action == "" {
+		return nil, fmt.Errorf("action is required")
+	}
+
 	apiKey := GetFromEventParameterOrEnv(event, "apiKey", "") // Deprecated: use oauthClientId/oauthClientSecret instead
 	oauthClientID := GetFromEventParameterOrEnv(event, "oauthClientId", "")
 	oauthClientSecret := GetFromEventParameterOrEnv(event, "oauthClientSecret", "")
-
-	// Either API key (deprecated) or OAuth 2 credentials must be provided
-	var oauthToken string
-	if oauthClientID != "" && oauthClientSecret != "" {
-		// Use OAuth 2 authentication - pass region directly
-		oauthToken, err = s.tokenFetcher.GetToken(ctx, region, oauthClientID, oauthClientSecret)
-		if err != nil {
-			return nil, fmt.Errorf("error getting OAuth 2 token: %v", err)
-		}
-		s.logger.Infof("Using OAuth 2 authentication")
-	} else if apiKey != "" {
-		// Use API key authentication (deprecated)
-		s.logger.Infof("Using API key authentication (deprecated)")
-	} else {
-		return nil, fmt.Errorf("either apiKey (deprecated) or oauthClientId/oauthClientSecret must be provided")
-	}
 
 	virtualAgentName := GetFromEventParameterOrEnv(event, "virtualAgentName", "")
 	if virtualAgentName == "" {
 		return nil, fmt.Errorf("virtualAgentName is required")
 	}
 
-	s.logger.Infof("Domain: %s, Region: %s, Action: %s, Virtual Agent Name: %s", domain, region, action, virtualAgentName)
-	customer, profile, _, err := ParseVirtualAgentName(virtualAgentName)
+	customer, profile, virtualAgentID, err := ParseVirtualAgentName(virtualAgentName)
 	if err != nil {
 		s.logger.Errorf("Error parsing virtual agent name: %v", err)
 		return nil, err
 	}
 
+	// Validate path segments to prevent injection attacks
+	if err := ValidatePathSegment(customer, "customer"); err != nil {
+		return nil, err
+	}
+	if err := ValidatePathSegment(profile, "profile"); err != nil {
+		return nil, err
+	}
+	if err := ValidatePathSegment(virtualAgentID, "virtualAgentID"); err != nil {
+		return nil, err
+	}
+
+	// Either API key (deprecated) or OAuth 2 credentials must be provided
+	var authConfig *AuthConfig
+	if oauthClientID != "" && oauthClientSecret != "" {
+		// Use OAuth 2 authentication
+		s.logger.Infof("Using OAuth 2 authentication")
+		authConfig = &AuthConfig{
+			Region:            region,
+			OAuthClientID:     oauthClientID,
+			OAuthClientSecret: oauthClientSecret,
+			TokenFetcher:      s.tokenFetcher,
+		}
+	} else if apiKey != "" {
+		// Use API key authentication (deprecated)
+		s.logger.Warnf("Using API key authentication (deprecated)")
+		authConfig = &AuthConfig{
+			APIKey: apiKey,
+		}
+	} else {
+		return nil, fmt.Errorf("either apiKey (deprecated) or oauthClientId/oauthClientSecret must be provided")
+	}
+
+	// Get supportedDtmfChars from environment variable only, default to "0123456789*"
+	supportedDtmfChars := os.Getenv("supportedDtmfChars")
+	if supportedDtmfChars == "" {
+		supportedDtmfChars = "0123456789*"
+	}
+
+	// Create handlers with authConfig, domain, parsed components, and event
+	handlers := NewHandlers(s.logger, authConfig, domain, customer, profile, virtualAgentID, supportedDtmfChars, event)
+
+	s.logger.Infof("Domain: %s, Region: %s, Action: %s, Virtual Agent Name: %s", domain, region, action, virtualAgentName)
+
 	switch action {
 	case "get_pstn_transfer_data":
-		result, err = s.handlers.GetPSTNTransferData(ctx, apiKey, oauthToken, domain, virtualAgentName, &event.Details)
+		result, err = handlers.GetPSTNTransferData(ctx)
 	case "get_handoff_data":
-		result, err = s.handlers.GetHandoffData(ctx, apiKey, oauthToken, domain, customer, profile, &event.Details.ContactData)
+		result, err = handlers.GetHandoffData(ctx)
 	default:
 		return nil, fmt.Errorf("invalid action: %s", action)
 	}

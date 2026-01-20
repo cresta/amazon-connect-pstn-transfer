@@ -34,5 +34,7 @@ func (l *Logger) Errorf(format string, v ...any) {
 	log.Printf("[ERROR] "+format, v...)
 }
 
-// Default logger instance
-var defaultLogger = NewLogger()
+// Warnf logs a warning message
+func (l *Logger) Warnf(format string, v ...any) {
+	log.Printf("[WARN] "+format, v...)
+}

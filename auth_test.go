@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/suite"
 )
@@ -40,7 +41,7 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken() {
 			mockResponse: func(w http.ResponseWriter, statusCode int) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(statusCode)
-				json.NewEncoder(w).Encode(map[string]interface{}{
+				json.NewEncoder(w).Encode(map[string]any{
 					"access_token": "test-access-token",
 					"token_type":   "Bearer",
 					"expires_in":   3600,
@@ -60,7 +61,7 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken() {
 			mockResponse: func(w http.ResponseWriter, statusCode int) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(statusCode)
-				json.NewEncoder(w).Encode(map[string]interface{}{
+				json.NewEncoder(w).Encode(map[string]any{
 					"access_token": "test-access-token",
 					"token_type":   "Bearer",
 					"expires_in":   3600,
@@ -96,7 +97,7 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken() {
 			mockResponse: func(w http.ResponseWriter, statusCode int) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(statusCode)
-				json.NewEncoder(w).Encode(map[string]interface{}{
+				json.NewEncoder(w).Encode(map[string]any{
 					"access_token": "test-access-token",
 					"token_type":   "Bearer",
 					"expires_in":   3600,
@@ -116,7 +117,7 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken() {
 			mockResponse: func(w http.ResponseWriter, statusCode int) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(statusCode)
-				json.NewEncoder(w).Encode(map[string]interface{}{
+				json.NewEncoder(w).Encode(map[string]any{
 					"access_token": "test-access-token",
 					"token_type":   "Bearer",
 					"expires_in":   3600,
@@ -178,12 +179,86 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken() {
 	}
 }
 
+func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken_ContextCancellation() {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"access_token": "test-access-token",
+			"token_type":   "Bearer",
+			"expires_in":   3600,
+		})
+	}))
+	defer server.Close()
+
+	fetcher := &DefaultOAuth2TokenFetcher{
+		client: http.DefaultClient,
+		tokenURL: func(region string) string {
+			return server.URL + "/v1/oauth/regionalToken"
+		},
+	}
+
+	region := "us-west-2-prod"
+	clientID := "test-client-id"
+	clientSecret := "test-client-secret"
+
+	// Clear cache before test
+	tokenCache.ClearToken(region, clientID)
+
+	s.Run("context cancelled before request", func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel() // Cancel immediately
+
+		_, err := fetcher.GetToken(ctx, region, clientID, clientSecret)
+		s.Error(err)
+		s.Contains(err.Error(), "context")
+	})
+
+	s.Run("context cancelled during request", func() {
+		// Clear cache to force a new request
+		tokenCache.ClearToken(region, clientID)
+
+		// Create a server that delays its response
+		slowServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Delay response to allow cancellation
+			time.Sleep(100 * time.Millisecond)
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]any{
+				"access_token": "test-access-token",
+				"token_type":   "Bearer",
+				"expires_in":   3600,
+			})
+		}))
+		defer slowServer.Close()
+
+		slowFetcher := &DefaultOAuth2TokenFetcher{
+			client: http.DefaultClient,
+			tokenURL: func(region string) string {
+				return slowServer.URL + "/v1/oauth/regionalToken"
+			},
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+
+		// Cancel context in a goroutine after a short delay
+		go func() {
+			time.Sleep(20 * time.Millisecond)
+			cancel()
+		}()
+
+		_, err := slowFetcher.GetToken(ctx, region, clientID, clientSecret)
+		s.Error(err)
+		// The error should be related to context cancellation
+		s.NotNil(ctx.Err(), "expected context to be cancelled")
+		s.Equal(context.Canceled, ctx.Err())
+	})
+}
+
 func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken_Cache() {
 	callCount := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount++
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		json.NewEncoder(w).Encode(map[string]any{
 			"access_token": "cached-token",
 			"token_type":   "Bearer",
 			"expires_in":   3600,

@@ -95,48 +95,45 @@ func (s *UtilsTestSuite) TestCopyMap() {
 	tests := []struct {
 		name         string
 		original     map[string]string
-		filteredKeys []string
-		want         map[string]interface{}
+		filteredKeys map[string]bool
+		want         map[string]any
 	}{
 		{
 			name:         "filter single key",
 			original:     map[string]string{"key1": "value1", "key2": "value2", "key3": "value3"},
-			filteredKeys: []string{"key2"},
-			want:         map[string]interface{}{"key1": "value1", "key3": "value3"},
+			filteredKeys: map[string]bool{"key2": true},
+			want:         map[string]any{"key1": "value1", "key3": "value3"},
 		},
 		{
 			name:         "filter multiple keys",
 			original:     map[string]string{"key1": "value1", "key2": "value2", "key3": "value3"},
-			filteredKeys: []string{"key1", "key3"},
-			want:         map[string]interface{}{"key2": "value2"},
+			filteredKeys: map[string]bool{"key1": true, "key3": true},
+			want:         map[string]any{"key2": "value2"},
 		},
 		{
 			name:         "filter all keys",
 			original:     map[string]string{"key1": "value1", "key2": "value2"},
-			filteredKeys: []string{"key1", "key2"},
-			want:         map[string]interface{}{},
+			filteredKeys: map[string]bool{"key1": true, "key2": true},
+			want:         map[string]any{},
 		},
 		{
 			name:         "filter non-existent keys",
 			original:     map[string]string{"key1": "value1", "key2": "value2"},
-			filteredKeys: []string{"key3", "key4"},
-			want:         map[string]interface{}{"key1": "value1", "key2": "value2"},
+			filteredKeys: map[string]bool{"key3": true, "key4": true},
+			want:         map[string]any{"key1": "value1", "key2": "value2"},
 		},
 		{
 			name:         "empty map",
 			original:     map[string]string{},
-			filteredKeys: []string{"key1"},
-			want:         map[string]interface{}{},
+			filteredKeys: map[string]bool{"key1": true},
+			want:         map[string]any{},
 		},
 	}
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			got := CopyMap(tt.original, tt.filteredKeys)
-			s.Equal(len(tt.want), len(got))
-			for k, v := range tt.want {
-				s.Equal(v, got[k])
-			}
+			s.Equal(tt.want, got)
 		})
 	}
 }
@@ -178,6 +175,21 @@ func (s *UtilsTestSuite) TestParseVirtualAgentName() {
 			virtualAgentName: "invalid-format",
 			wantErr:          true,
 		},
+		{
+			name:             "invalid format - wrong segment at position 0",
+			virtualAgentName: "wrong/test-customer/profiles/test-profile/virtualAgents/test-agent",
+			wantErr:          true,
+		},
+		{
+			name:             "invalid format - wrong segment at position 2",
+			virtualAgentName: "customers/test-customer/wrong/test-profile/virtualAgents/test-agent",
+			wantErr:          true,
+		},
+		{
+			name:             "invalid format - wrong segment at position 4",
+			virtualAgentName: "customers/test-customer/profiles/test-profile/wrong/test-agent",
+			wantErr:          true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -204,7 +216,7 @@ func (s *UtilsTestSuite) TestBuildAPIDomainFromRegion() {
 		{
 			name:   "region with -prod suffix",
 			region: "us-west-2-prod",
-			want:   "https://api.us-west-2-prod.cresta.ai",
+			want:   "https://api.us-west-2-prod.cresta.com",
 		},
 		{
 			name:   "region with -staging suffix",
@@ -280,6 +292,138 @@ func (s *UtilsTestSuite) TestExtractRegionFromDomain() {
 			}
 			s.NoError(err)
 			s.Equal(tt.want, got)
+		})
+	}
+}
+
+func (s *UtilsTestSuite) TestValidateDomain() {
+	tests := []struct {
+		name    string
+		domain  string
+		wantErr bool
+	}{
+		{
+			name:    "Given: valid HTTPS domain, When: validating, Then: should succeed",
+			domain:  "https://api.example.com",
+			wantErr: false,
+		},
+		{
+			name:    "Given: HTTPS domain with trailing slash, When: validating, Then: should succeed",
+			domain:  "https://api.example.com/",
+			wantErr: false,
+		},
+		{
+			name:    "Given: HTTP localhost domain, When: validating, Then: should succeed (for testing)",
+			domain:  "http://localhost:8080",
+			wantErr: false,
+		},
+		{
+			name:    "Given: HTTP 127.0.0.1 domain, When: validating, Then: should succeed (for testing)",
+			domain:  "http://127.0.0.1:8080",
+			wantErr: false,
+		},
+		{
+			name:    "Given: HTTP non-localhost domain, When: validating, Then: should fail",
+			domain:  "http://api.example.com",
+			wantErr: true,
+		},
+		{
+			name:    "Given: domain with path, When: validating, Then: should fail",
+			domain:  "https://api.example.com/path",
+			wantErr: true,
+		},
+		{
+			name:    "Given: domain with query parameters, When: validating, Then: should fail",
+			domain:  "https://api.example.com?key=value",
+			wantErr: true,
+		},
+		{
+			name:    "Given: domain with fragment, When: validating, Then: should fail",
+			domain:  "https://api.example.com#fragment",
+			wantErr: true,
+		},
+		{
+			name:    "Given: domain with path traversal in host, When: validating, Then: should fail",
+			domain:  "https://api.example.com/../evil.com",
+			wantErr: true,
+		},
+		{
+			name:    "Given: empty domain, When: validating, Then: should fail",
+			domain:  "",
+			wantErr: true,
+		},
+		{
+			name:    "Given: invalid URL, When: validating, Then: should fail",
+			domain:  "not-a-url",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			err := ValidateDomain(tt.domain)
+			if tt.wantErr {
+				s.Error(err)
+			} else {
+				s.NoError(err)
+			}
+		})
+	}
+}
+
+func (s *UtilsTestSuite) TestValidatePathSegment() {
+	tests := []struct {
+		name    string
+		segment string
+		segName string
+		wantErr bool
+	}{
+		{
+			name:    "Given: valid path segment, When: validating, Then: should succeed",
+			segment: "test-customer",
+			segName: "customer",
+			wantErr: false,
+		},
+		{
+			name:    "Given: path segment with slash, When: validating, Then: should fail",
+			segment: "test/customer",
+			segName: "customer",
+			wantErr: true,
+		},
+		{
+			name:    "Given: path segment with path traversal, When: validating, Then: should fail",
+			segment: "../evil",
+			segName: "customer",
+			wantErr: true,
+		},
+		{
+			name:    "Given: path segment with URL-encoded path traversal, When: validating, Then: should fail",
+			segment: "%2e%2e/evil",
+			segName: "customer",
+			wantErr: true,
+		},
+		{
+			name:    "Given: path segment with null byte, When: validating, Then: should fail",
+			segment: "test\x00customer",
+			segName: "customer",
+			wantErr: true,
+		},
+		{
+			name:    "Given: empty path segment, When: validating, Then: should fail",
+			segment: "",
+			segName: "customer",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			err := ValidatePathSegment(tt.segment, tt.segName)
+			if tt.wantErr {
+				s.Error(err)
+			} else {
+				s.NoError(err)
+			}
 		})
 	}
 }

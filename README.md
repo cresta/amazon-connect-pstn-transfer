@@ -37,9 +37,10 @@ It provides two main functionalities:
 The function accepts the following parameters (either through event parameters or environment variables):
 It is recommended to only set `action` via parameter and the rest via environment variable.
 
-- **action**: The action to perform, either `get_pstn_transfer_data` or `get_handoff_data`. Defaults to `get_pstn_transfer_data`
+- **action**: The action to perform, either `get_pstn_transfer_data` or `get_handoff_data`. Required.
 - **region**: AWS region with suffix (e.g., `us-west-2-prod` or `us-west-2-staging`). If not provided, will be extracted from `apiDomain`
-- **virtualAgentName**: The resourcename of the virtual agent the call is transferred to. Format: `customers/{customer}/profiles/{profile}/virtualAgents/{virtualAgentID}`
+- **virtualAgentName**: The resourcename of the virtual agent the call is transferred to. Format: `customers/{customer}/profiles/{profile}/virtualAgents/{virtualAgentID}`. Required.
+- **supportedDtmfChars**: DTMF characters supported for PSTN transfer. Defaults to `"0123456789*"`. Can be configured via event parameter or environment variable.
 
 - **apiDomain**: ⚠️ **DEPRECATED** - The domain of the Cresta API. Typically `https://api.${cluster}.cresta.ai`. If not provided, will be constructed from `region` (defaults to `https://api.us-west-2-prod.cresta.ai`). Use `region` instead.
 
@@ -218,6 +219,7 @@ The project includes a CloudFormation template for infrastructure-as-code deploy
    - **Recommended**: For OAuth 2: `export oauthClientId=<client-id>` and `export oauthClientSecret=<client-secret>`
    - **Deprecated**: For API key: `export apiKey=<apiKey>`
 2. Export other required variables: `export region=<region>` (e.g., `us-west-2-prod`). `apiDomain` is deprecated and will be constructed from `region` if not provided.
+3. Export optional variables: `export supportedDtmfChars=<dtmf-chars>` (defaults to `0123456789*` if not provided).
 3. Run the `build and debug` function through VS Code's debugger after making changes
 4. Use the provided test event in `events/test.json` via `cmd + shift P -> Run Task -> event`
 5. Check the debug console for output and response

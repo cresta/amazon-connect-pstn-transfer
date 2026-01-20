@@ -213,8 +213,7 @@ func (s *MainTestSuite) TestHandlerService_Handle() {
 
 			logger := NewLogger()
 			service := &HandlerService{
-				logger:   logger,
-				handlers: NewHandlers(logger),
+				logger: logger,
 				tokenFetcher: &mockTokenFetcher{
 					token: tt.mockToken,
 					err:   tt.tokenErr,

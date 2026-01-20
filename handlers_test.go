@@ -22,8 +22,7 @@ func TestHandlersTestSuite(t *testing.T) {
 func (s *HandlersTestSuite) TestGetPSTNTransferData() {
 	tests := []struct {
 		name             string
-		apiKey           string
-		oauthToken       string
+		authConfig       *AuthConfig
 		domain           string
 		virtualAgentName string
 		details          *events.ConnectDetails
@@ -32,9 +31,10 @@ func (s *HandlersTestSuite) TestGetPSTNTransferData() {
 		wantErr          bool
 	}{
 		{
-			name:             "successful request",
-			apiKey:           "test-api-key",
-			oauthToken:       "",
+			name: "successful request",
+			authConfig: &AuthConfig{
+				APIKey: "test-api-key",
+			},
 			domain:           "https://api.example.com",
 			virtualAgentName: "customers/test-customer/profiles/test-profile/virtualAgents/test-agent",
 			details: &events.ConnectDetails{
@@ -58,9 +58,10 @@ func (s *HandlersTestSuite) TestGetPSTNTransferData() {
 			wantErr:        false,
 		},
 		{
-			name:             "error response from server",
-			apiKey:           "test-api-key",
-			oauthToken:       "",
+			name: "error response from server",
+			authConfig: &AuthConfig{
+				APIKey: "test-api-key",
+			},
 			domain:           "https://api.example.com",
 			virtualAgentName: "customers/test-customer/profiles/test-profile/virtualAgents/test-agent",
 			details: &events.ConnectDetails{
@@ -84,17 +85,17 @@ func (s *HandlersTestSuite) TestGetPSTNTransferData() {
 				expectedPath := "/v1/" + tt.virtualAgentName + ":generatePSTNTransferData"
 				s.Equal(expectedPath, r.URL.Path)
 
-				var payload map[string]interface{}
+				var payload map[string]any
 				err := json.NewDecoder(r.Body).Decode(&payload)
 				s.NoError(err)
 
 				// Verify payload structure
 				s.Equal(tt.details.ContactData.ContactID, payload["callId"])
 
-				ccaasMetadata, ok := payload["ccaasMetadata"].(map[string]interface{})
+				ccaasMetadata, ok := payload["ccaasMetadata"].(map[string]any)
 				s.True(ok, "expected ccaasMetadata in payload")
 
-				parameters, ok := ccaasMetadata["parameters"].(map[string]interface{})
+				parameters, ok := ccaasMetadata["parameters"].(map[string]any)
 				s.True(ok, "expected parameters in ccaasMetadata")
 
 				// Verify filtered keys are not present
@@ -109,19 +110,29 @@ func (s *HandlersTestSuite) TestGetPSTNTransferData() {
 			defer server.Close()
 
 			logger := NewLogger()
-			handlers := &Handlers{
-				logger: logger,
-				apiClient: &APIClient{
-					logger: logger,
-					client: &http.Client{},
-				},
-			}
-
 			// Override the domain to use the test server
 			domain := server.URL
+			// Parse virtualAgentName to get components
+			customer, profile, virtualAgentID, err := ParseVirtualAgentName(tt.virtualAgentName)
+			s.NoError(err)
+			// Create event with details
+			event := events.ConnectEvent{
+				Details: *tt.details,
+			}
+
+			supportedDtmfChars := "0123456789*"
+			handlers := NewHandlers(logger, tt.authConfig, domain, customer, profile, virtualAgentID, supportedDtmfChars, event)
+			// Override the apiClient to use the test server's http client with auth middleware
+			// Create a retry client with auth, but override the underlying http.Client for testing
+			testClient := NewRetryHTTPClient(WithLogger(logger), WithAuth(tt.authConfig))
+			handlers.apiClient = &CrestaAPIClient{
+				logger: logger,
+				client: testClient,
+			}
+
 			ctx := context.Background()
 
-			got, err := handlers.GetPSTNTransferData(ctx, tt.apiKey, tt.oauthToken, domain, tt.virtualAgentName, tt.details)
+			got, err := handlers.GetPSTNTransferData(ctx)
 
 			if tt.wantErr {
 				s.Error(err)
@@ -133,11 +144,19 @@ func (s *HandlersTestSuite) TestGetPSTNTransferData() {
 	}
 }
 
+// TestGetHandoffData tests the external API interface towards Amazon Connect.
+// This test verifies that the response format matches the expected structure that
+// Amazon Connect expects, including field names like "handoff_summary",
+// "handoff_conversation", "handoff_conversationCorrelationId", and
+// "handoff_transferTarget".
+//
+// IMPORTANT: These external field names are part of a public API contract with
+// Amazon Connect. They cannot be changed without breaking existing customer
+// Connect instances that may already depend on these exact field names.
 func (s *HandlersTestSuite) TestGetHandoffData() {
 	tests := []struct {
 		name           string
-		apiKey         string
-		oauthToken     string
+		authConfig     *AuthConfig
 		domain         string
 		customer       string
 		profile        string
@@ -148,12 +167,13 @@ func (s *HandlersTestSuite) TestGetHandoffData() {
 		wantResponse   events.ConnectResponse
 	}{
 		{
-			name:       "successful request",
-			apiKey:     "test-api-key",
-			oauthToken: "",
-			domain:     "https://api.example.com",
-			customer:   "test-customer",
-			profile:    "test-profile",
+			name: "successful request",
+			authConfig: &AuthConfig{
+				APIKey: "test-api-key",
+			},
+			domain:   "https://api.example.com",
+			customer: "test-customer",
+			profile:  "test-profile",
 			eventData: &events.ConnectContactData{
 				ContactID: "test-contact-id",
 			},
@@ -178,12 +198,13 @@ func (s *HandlersTestSuite) TestGetHandoffData() {
 			},
 		},
 		{
-			name:       "error response from server",
-			apiKey:     "test-api-key",
-			oauthToken: "",
-			domain:     "https://api.example.com",
-			customer:   "test-customer",
-			profile:    "test-profile",
+			name: "error response from server",
+			authConfig: &AuthConfig{
+				APIKey: "test-api-key",
+			},
+			domain:   "https://api.example.com",
+			customer: "test-customer",
+			profile:  "test-profile",
 			eventData: &events.ConnectContactData{
 				ContactID: "test-contact-id",
 			},
@@ -202,7 +223,7 @@ func (s *HandlersTestSuite) TestGetHandoffData() {
 				expectedPath := "/v1/customers/" + tt.customer + "/profiles/" + tt.profile + "/handoffs:fetchAIAgentHandoff"
 				s.Equal(expectedPath, r.URL.Path)
 
-				var payload map[string]interface{}
+				var payload map[string]any
 				err := json.NewDecoder(r.Body).Decode(&payload)
 				s.NoError(err)
 
@@ -214,18 +235,27 @@ func (s *HandlersTestSuite) TestGetHandoffData() {
 			defer server.Close()
 
 			logger := NewLogger()
-			handlers := &Handlers{
-				logger: logger,
-				apiClient: &APIClient{
-					logger: logger,
-					client: &http.Client{},
+			domain := server.URL
+			// Create event with ContactData
+			event := events.ConnectEvent{
+				Details: events.ConnectDetails{
+					ContactData: *tt.eventData,
 				},
 			}
+			// GetHandoffData doesn't use virtualAgentID, but we need to pass it to NewHandlers
+			supportedDtmfChars := "0123456789*"
+			handlers := NewHandlers(logger, tt.authConfig, domain, tt.customer, tt.profile, "", supportedDtmfChars, event)
+			// Override the apiClient to use the test server's http client with auth middleware
+			// Create a retry client with auth, but override the underlying http.Client for testing
+			testClient := NewRetryHTTPClient(WithLogger(logger), WithAuth(tt.authConfig))
+			handlers.apiClient = &CrestaAPIClient{
+				logger: logger,
+				client: testClient,
+			}
 
-			domain := server.URL
 			ctx := context.Background()
 
-			got, err := handlers.GetHandoffData(ctx, tt.apiKey, tt.oauthToken, domain, tt.customer, tt.profile, tt.eventData)
+			got, err := handlers.GetHandoffData(ctx)
 
 			if tt.wantErr {
 				s.Error(err)
