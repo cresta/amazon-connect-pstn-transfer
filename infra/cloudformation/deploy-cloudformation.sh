@@ -27,9 +27,9 @@ case "$impl_choice" in
         ;;
     *)
         lambda_impl="go"
-        CODE_ZIP="aws-lambda-connect-pstn-transfer.zip"
+        CODE_ZIP="aws-lambda-connect-pstn-transfer-go.zip"
         BUILD_SCRIPT="$PROJECT_ROOT/scripts/build-go-lambda.sh"
-        DEFAULT_CODE_S3_KEY="aws-lambda-connect-pstn-transfer.zip"
+        DEFAULT_CODE_S3_KEY="aws-lambda-connect-pstn-transfer-go.zip"
         ;;
 esac
 
