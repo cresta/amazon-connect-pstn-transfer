@@ -85,7 +85,7 @@ Resources:
       Handler: !If
         - IsGoImplementation
         - bootstrap
-        - dist/handler.handler
+        - handler.handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Timeout: 30
       MemorySize: 256
