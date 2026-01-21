@@ -1,5 +1,9 @@
 [
   {
+    "ParameterKey": "LambdaImplementation",
+    "ParameterValue": "go"
+  },
+  {
     "ParameterKey": "OAuthClientId",
     "ParameterValue": "your-oauth-client-id"
   },
@@ -21,7 +25,7 @@
   },
   {
     "ParameterKey": "CodeS3Key",
-    "ParameterValue": "aws-lambda-connect-pstn-transfer.zip"
+    "ParameterValue": ""
   },
   {
     "ParameterKey": "FunctionName",

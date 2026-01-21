@@ -174,8 +174,8 @@ func IsRetryableError(err error, statusCode int) bool {
 	if err != nil {
 		return true // Network errors are retryable
 	}
-	// Retry on 5xx server errors, but not on 4xx client errors
-	return statusCode >= 500 && statusCode < 600
+	// Retry on 5xx server errors, 429 (Too Many Requests), and 408 (Request Timeout)
+	return statusCode >= 500 && statusCode < 600 || statusCode == 429 || statusCode == 408
 }
 
 // ExponentialBackoff calculates the delay for the given attempt with jitter.

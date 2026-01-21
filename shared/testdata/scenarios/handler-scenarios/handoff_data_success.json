@@ -1,0 +1,37 @@
+{
+	"name": "handoff_data_success",
+	"description": "Handoff endpoint returns correct data",
+	"mock": {
+		"path": "/v1/customers/test-customer/profiles/test-profile/handoffs:fetchAIAgentHandoff",
+		"method": "POST",
+		"responses": [
+			{
+				"status": 200,
+				"body": {
+					"handoff": {
+						"conversation": "conv-id",
+						"conversationCorrelationId": "corr-id",
+						"summary": "test summary",
+						"transferTarget": "pstn:PSTN1"
+					}
+				}
+			}
+		]
+	},
+	"test": {
+		"type": "handler",
+		"action": "getHandoffData",
+		"event": {
+			"correlationId": "test-contact-id"
+		}
+	},
+	"expectations": {
+		"status": 200,
+		"body": {
+			"handoff": {
+				"conversation": "conv-id",
+				"transferTarget": "pstn:PSTN1"
+			}
+		}
+	}
+}

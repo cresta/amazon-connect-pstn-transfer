@@ -1,0 +1,307 @@
+openapi: 3.0.0
+info:
+  title: Cresta Amazon Connect PSTN Transfer API
+  description: |
+    API specification for Amazon Connect PSTN Transfer operations.
+    This API provides endpoints for fetching AI agent handoff data and generating PSTN transfer data.
+  version: 1.0.0
+  contact:
+    name: Cresta
+    url: https://cresta.com
+servers:
+  - url: https://api.example.com
+    description: Production server (replace with actual domain)
+  - url: https://api-staging.example.com
+    description: Staging server (replace with actual domain)
+
+security:
+  - OAuth2: []
+  - ApiKeyAuth: []
+
+tags:
+  - name: Handoffs
+    description: Operations related to AI agent handoffs
+  - name: PSTN Transfer Data
+    description: Operations related to PSTN transfer data generation
+
+paths:
+  /v1/customers/{customerId}/profiles/{profileId}/handoffs:fetchAIAgentHandoff:
+    post:
+      tags:
+        - Handoffs
+      summary: Fetch AI Agent Handoff Data
+      description: |
+        Retrieves handoff data for a given contact correlation ID.
+        This endpoint returns conversation details, summary, and transfer target information.
+      operationId: fetchAIAgentHandoff
+      parameters:
+        - name: customerId
+          in: path
+          required: true
+          description: The customer ID
+          schema:
+            type: string
+          example: "cresta"
+        - name: profileId
+          in: path
+          required: true
+          description: The profile ID
+          schema:
+            type: string
+          example: "walter-dev"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FetchAIAgentHandoffRequest"
+            example:
+              correlationId: "ee4d8126-134e-4e74-8250-71c7bbf446c5"
+      responses:
+        "200":
+          description: Successful response with handoff data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FetchAIAgentHandoffResponse"
+              example:
+                handoff:
+                  conversation: "conversation-id-12345"
+                  conversationCorrelationId: "ee4d8126-134e-4e74-8250-71c7bbf446c5"
+                  summary: "Customer inquiry about product availability"
+                  transferTarget: "pstn:PSTN1"
+        "400":
+          description: Bad request - invalid input parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized - authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found - handoff data not found for the given correlation ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+        - OAuth2: []
+        - ApiKeyAuth: []
+
+  /v1/{virtualAgentName}:generatePSTNTransferData:
+    post:
+      tags:
+        - PSTN Transfer Data
+      summary: Generate PSTN Transfer Data
+      description: |
+        Generates PSTN transfer data including phone number and DTMF sequence for a given contact.
+        This endpoint merges contact data with parameters and returns transfer instructions.
+      operationId: generatePSTNTransferData
+      parameters:
+        - name: virtualAgentName
+          in: path
+          required: true
+          description: |
+            The virtual agent resource name in the format:
+            customers/{customerId}/profiles/{profileId}/virtualAgents/{virtualAgentId}
+          schema:
+            type: string
+          example: "customers/cresta/profiles/walter-dev/virtualAgents/556b441c-1993-4057-925c-c4ef53f840a0"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GeneratePSTNTransferDataRequest"
+            example:
+              callId: "ee4d8126-134e-4e74-8250-71c7bbf446c5"
+              ccaasMetadata:
+                ContactId: "ee4d8126-134e-4e74-8250-71c7bbf446c5"
+                Channel: "VOICE"
+                LanguageCode: "en-US"
+                parameters:
+                  customParam1: "value1"
+                  customParam2: "value2"
+              supportedDtmfChars: "0123456789*#"
+      responses:
+        "200":
+          description: Successful response with PSTN transfer data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeneratePSTNTransferDataResponse"
+              example:
+                phoneNumber: "+1234567890"
+                dtmfSequence: "1234"
+        "400":
+          description: Bad request - invalid input parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized - authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found - virtual agent not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+        - OAuth2: []
+        - ApiKeyAuth: []
+
+components:
+  schemas:
+    FetchAIAgentHandoffRequest:
+      type: object
+      required:
+        - correlationId
+      properties:
+        correlationId:
+          type: string
+          description: The contact correlation ID (ContactID from Amazon Connect)
+          example: "ee4d8126-134e-4e74-8250-71c7bbf446c5"
+
+    FetchAIAgentHandoffResponse:
+      type: object
+      required:
+        - handoff
+      properties:
+        handoff:
+          $ref: "#/components/schemas/Handoff"
+
+    Handoff:
+      type: object
+      required:
+        - conversation
+        - conversationCorrelationId
+        - summary
+        - transferTarget
+      properties:
+        conversation:
+          type: string
+          description: The conversation identifier
+          example: "conversation-id-12345"
+        conversationCorrelationId:
+          type: string
+          description: The correlation ID associated with the conversation
+          example: "ee4d8126-134e-4e74-8250-71c7bbf446c5"
+        summary:
+          type: string
+          description: Summary of the handoff conversation
+          example: "Customer inquiry about product availability"
+        transferTarget:
+          type: string
+          description: The transfer target identifier (e.g., PSTN endpoint)
+          example: "pstn:PSTN1"
+
+    GeneratePSTNTransferDataRequest:
+      type: object
+      required:
+        - callId
+        - ccaasMetadata
+        - supportedDtmfChars
+      properties:
+        callId:
+          type: string
+          description: The call/contact ID from Amazon Connect
+          example: "ee4d8126-134e-4e74-8250-71c7bbf446c5"
+        ccaasMetadata:
+          type: object
+          description: |
+            Contact Center as a Service metadata containing contact data and parameters.
+            This object merges Amazon Connect ContactData with filtered parameters.
+          additionalProperties: true
+          properties:
+            ContactId:
+              type: string
+              description: Amazon Connect contact ID
+            Channel:
+              type: string
+              description: Contact channel (e.g., VOICE)
+              enum:
+                - VOICE
+                - CHAT
+            LanguageCode:
+              type: string
+              description: Language code (e.g., en-US)
+            parameters:
+              type: object
+              description: Filtered parameters (excluding internal keys like apiKey, action, etc.)
+              additionalProperties: true
+        supportedDtmfChars:
+          type: string
+          description: Supported DTMF characters for the transfer
+          example: "0123456789*#"
+
+    GeneratePSTNTransferDataResponse:
+      type: object
+      description: |
+        Response containing PSTN transfer data. The exact structure may vary,
+        but typically includes phone number and DTMF sequence.
+      additionalProperties: true
+      properties:
+        phoneNumber:
+          type: string
+          description: Phone number to transfer to
+          example: "+1234567890"
+        dtmfSequence:
+          type: string
+          description: DTMF sequence to dial after transfer
+          example: "1234"
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "An error message"
+        code:
+          type: integer
+          description: Error code
+          example: 400
+        details:
+          type: object
+          description: Additional error details
+          additionalProperties: true
+
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      description: |
+        OAuth 2.0 Client Credentials flow for authentication.
+        This is the preferred authentication method.
+      flows:
+        clientCredentials:
+          tokenUrl: /oauth/token
+          scopes: {}
+
+    ApiKeyAuth:
+      type: apiKey
+      description: |
+        API Key authentication (deprecated).
+        Use OAuth2 instead when possible.
+      in: header
+      name: X-API-Key

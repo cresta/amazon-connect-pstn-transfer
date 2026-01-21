@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test-go:
+    name: Test Go Implementation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Run tests
+        run: go test -v ./lambdas/pstn-transfer-go/...
+
+      - name: Build
+        run: |
+          chmod +x scripts/build-go-lambda.sh
+          ./scripts/build-go-lambda.sh
+
+  test-typescript:
+    name: Test TypeScript Implementation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: lambdas/pstn-transfer-ts/package-lock.json
+
+      - name: Install dependencies
+        working-directory: lambdas/pstn-transfer-ts
+        run: npm ci
+
+      - name: Run linter
+        working-directory: lambdas/pstn-transfer-ts
+        run: npm run lint
+
+      - name: Run tests
+        working-directory: lambdas/pstn-transfer-ts
+        run: npm test
+
+      - name: Build
+        working-directory: lambdas/pstn-transfer-ts
+        run: npm run build
+
+  shared-tests:
+    name: Run Shared Integration Tests
+    runs-on: ubuntu-latest
+    needs: [test-go, test-typescript]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: shared/testdata/package-lock.json
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Install shared test dependencies
+        working-directory: shared/testdata
+        run: npm ci
+
+      - name: Install TypeScript dependencies
+        working-directory: lambdas/pstn-transfer-ts
+        run: npm ci
+
+      - name: Set up QEMU for ARM64 emulation
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Run shared integration tests
+        working-directory: shared/testdata
+        env:
+          # Build Go binary for ARM64 to match production architecture
+          # QEMU will handle execution of ARM64 binaries on x86_64 runners
+          GOOS: linux
+          GOARCH: arm64
+        run: npm test

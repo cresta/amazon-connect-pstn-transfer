@@ -5,8 +5,8 @@ on:
     types: [published]
 
 jobs:
-  build:
-    name: Build Lambda Deployment Package
+  build-go:
+    name: Build Go Lambda Deployment Package
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -17,19 +17,79 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Build Lambda function
+      - name: Build Go Lambda function
         run: |
-          GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o bootstrap .
-          zip -j aws-lambda-connect-pstn-transfer.zip bootstrap
+          chmod +x scripts/build-go-lambda.sh
+          ./scripts/build-go-lambda.sh
 
-      - name: Verify build
+      - name: Verify Go build
         run: |
+          test -f bootstrap || (echo "bootstrap not found" && exit 1)
           file bootstrap
+          test -f aws-lambda-connect-pstn-transfer.zip || (echo "zip file not found" && exit 1)
           ls -lh aws-lambda-connect-pstn-transfer.zip
 
-      - name: Upload release asset
+      - name: Upload Go artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-lambda-package
+          path: aws-lambda-connect-pstn-transfer.zip
+
+  build-typescript:
+    name: Build TypeScript Lambda Deployment Package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: lambdas/pstn-transfer-ts/package-lock.json
+
+      - name: Install dependencies
+        working-directory: lambdas/pstn-transfer-ts
+        run: npm ci
+
+      - name: Build TypeScript Lambda function
+        run: |
+          chmod +x scripts/build-typescript-lambda.sh
+          ./scripts/build-typescript-lambda.sh
+
+      - name: Verify TypeScript build
+        run: |
+          test -f aws-lambda-connect-pstn-transfer-ts.zip || (echo "zip file not found" && exit 1)
+          ls -lh aws-lambda-connect-pstn-transfer-ts.zip
+
+      - name: Upload TypeScript artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: typescript-lambda-package
+          path: aws-lambda-connect-pstn-transfer-ts.zip
+
+  release:
+    name: Upload Release Assets
+    runs-on: ubuntu-latest
+    needs: [build-go, build-typescript]
+    steps:
+      - name: Download Go artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: go-lambda-package
+          path: release-assets
+
+      - name: Download TypeScript artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: typescript-lambda-package
+          path: release-assets
+
+      - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
-          files: aws-lambda-connect-pstn-transfer.zip
+          files: release-assets/*.zip
+          overwrite_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

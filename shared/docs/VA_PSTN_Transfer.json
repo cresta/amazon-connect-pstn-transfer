@@ -1,0 +1,258 @@
+{
+	"Version": "2019-10-30",
+	"StartAction": "Get Phone Number And DTMF",
+	"Metadata": {
+		"entryPointPosition": {
+			"x": 40,
+			"y": 40
+		},
+		"ActionMetadata": {
+			"Get Phone Number And DTMF": {
+				"position": {
+					"x": 204.8,
+					"y": 35.2
+				},
+				"isFriendlyName": true,
+				"parameters": {
+					"LambdaFunctionARN": {
+						"displayName": "aws-lambda-connect-pstn-transfer"
+					}
+				},
+				"dynamicMetadata": {}
+			},
+			"b9ad1ae0-fd03-4f49-9a80-08e74425520f": {
+				"position": {
+					"x": 501.6,
+					"y": 103.2
+				},
+				"parameters": {
+					"Attributes": {
+						"phoneNumber": {
+							"useDynamic": true
+						},
+						"dtmfSequence": {
+							"useDynamic": true
+						}
+					}
+				},
+				"dynamicParams": ["phoneNumber", "dtmfSequence"]
+			},
+			"572bca25-da4f-49ed-91f8-2d6d19bed988": {
+				"position": {
+					"x": 1181.6,
+					"y": 166.4
+				},
+				"parameters": {
+					"ThirdPartyPhoneNumber": {
+						"countryCode": "",
+						"useDynamic": true
+					},
+					"ThirdPartyDTMFDigits": {
+						"useDynamic": true
+					}
+				}
+			},
+			"c235d553-2697-4382-b8ef-4751bdccf4c2": {
+				"position": {
+					"x": 795.2,
+					"y": 172
+				}
+			},
+			"cf53690b-d0d8-4701-9525-4a7e1da6bbb6": {
+				"position": {
+					"x": 1333.6,
+					"y": 571.2
+				},
+				"parameters": {
+					"LambdaFunctionARN": {
+						"displayName": "aws-lambda-connect-pstn-transfer"
+					}
+				},
+				"dynamicMetadata": {
+					"action": false
+				}
+			},
+			"13918deb-0fc6-491b-84bc-48da8758ce65": {
+				"position": {
+					"x": 2028,
+					"y": 51.2
+				}
+			},
+			"df4d930c-c19a-4a4a-8ef7-ae8f2cf91771": {
+				"position": {
+					"x": 1988,
+					"y": 757.6
+				}
+			},
+			"60eee377-0b5e-48e6-bc90-177a210d7608": {
+				"position": {
+					"x": 1621.6,
+					"y": 804.8
+				},
+				"parameters": {
+					"Attributes": {
+						"transferTarget": {
+							"useDynamic": true
+						}
+					}
+				},
+				"dynamicParams": ["transferTarget"]
+			}
+		},
+		"Annotations": [],
+		"name": "Mathias - VA DTMF + Number test",
+		"description": "",
+		"type": "contactFlow",
+		"status": "PUBLISHED",
+		"hash": {}
+	},
+	"Actions": [
+		{
+			"Parameters": {
+				"LambdaFunctionARN": "arn:aws:lambda:us-west-2:{ACCOUNT_ID}:function:aws-lambda-connect-pstn-transfer",
+				"InvocationTimeLimitSeconds": "3",
+				"ResponseValidation": {
+					"ResponseType": "JSON"
+				}
+			},
+			"Identifier": "Get Phone Number And DTMF",
+			"Type": "InvokeLambdaFunction",
+			"Transitions": {
+				"NextAction": "b9ad1ae0-fd03-4f49-9a80-08e74425520f",
+				"Errors": [
+					{
+						"NextAction": "b9ad1ae0-fd03-4f49-9a80-08e74425520f",
+						"ErrorType": "NoMatchingError"
+					}
+				]
+			}
+		},
+		{
+			"Parameters": {
+				"Attributes": {
+					"phoneNumber": "$.External.phoneNumber",
+					"dtmfSequence": "$.External.dtmfSequence"
+				},
+				"TargetContact": "Current"
+			},
+			"Identifier": "b9ad1ae0-fd03-4f49-9a80-08e74425520f",
+			"Type": "UpdateContactAttributes",
+			"Transitions": {
+				"NextAction": "c235d553-2697-4382-b8ef-4751bdccf4c2",
+				"Errors": [
+					{
+						"NextAction": "c235d553-2697-4382-b8ef-4751bdccf4c2",
+						"ErrorType": "NoMatchingError"
+					}
+				]
+			}
+		},
+		{
+			"Parameters": {
+				"ThirdPartyPhoneNumber": "$.Attributes.phoneNumber",
+				"ThirdPartyConnectionTimeLimitSeconds": "30",
+				"ContinueFlowExecution": "True",
+				"ThirdPartyDTMFDigits": "$.Attributes.dtmfSequence"
+			},
+			"Identifier": "572bca25-da4f-49ed-91f8-2d6d19bed988",
+			"Type": "TransferParticipantToThirdParty",
+			"Transitions": {
+				"NextAction": "cf53690b-d0d8-4701-9525-4a7e1da6bbb6",
+				"Errors": [
+					{
+						"NextAction": "13918deb-0fc6-491b-84bc-48da8758ce65",
+						"ErrorType": "CallFailed"
+					},
+					{
+						"NextAction": "13918deb-0fc6-491b-84bc-48da8758ce65",
+						"ErrorType": "ConnectionTimeLimitExceeded"
+					},
+					{
+						"NextAction": "13918deb-0fc6-491b-84bc-48da8758ce65",
+						"ErrorType": "NoMatchingError"
+					}
+				]
+			}
+		},
+		{
+			"Parameters": {
+				"Text": "DTMF is $.Attributes.dtmfSequence"
+			},
+			"Identifier": "c235d553-2697-4382-b8ef-4751bdccf4c2",
+			"Type": "MessageParticipant",
+			"Transitions": {
+				"NextAction": "572bca25-da4f-49ed-91f8-2d6d19bed988",
+				"Errors": [
+					{
+						"NextAction": "572bca25-da4f-49ed-91f8-2d6d19bed988",
+						"ErrorType": "NoMatchingError"
+					}
+				]
+			}
+		},
+		{
+			"Parameters": {
+				"LambdaFunctionARN": "arn:aws:lambda:us-west-2:{ACCOUNT_ID}:function:aws-lambda-connect-pstn-transfer",
+				"InvocationTimeLimitSeconds": "3",
+				"LambdaInvocationAttributes": {
+					"action": "get_handoff_data"
+				},
+				"ResponseValidation": {
+					"ResponseType": "JSON"
+				}
+			},
+			"Identifier": "cf53690b-d0d8-4701-9525-4a7e1da6bbb6",
+			"Type": "InvokeLambdaFunction",
+			"Transitions": {
+				"NextAction": "60eee377-0b5e-48e6-bc90-177a210d7608",
+				"Errors": [
+					{
+						"NextAction": "13918deb-0fc6-491b-84bc-48da8758ce65",
+						"ErrorType": "NoMatchingError"
+					}
+				]
+			}
+		},
+		{
+			"Parameters": {},
+			"Identifier": "13918deb-0fc6-491b-84bc-48da8758ce65",
+			"Type": "DisconnectParticipant",
+			"Transitions": {}
+		},
+		{
+			"Parameters": {
+				"Text": "Call must be transferred to $.Attributes.transferTarget"
+			},
+			"Identifier": "df4d930c-c19a-4a4a-8ef7-ae8f2cf91771",
+			"Type": "MessageParticipant",
+			"Transitions": {
+				"NextAction": "13918deb-0fc6-491b-84bc-48da8758ce65",
+				"Errors": [
+					{
+						"NextAction": "13918deb-0fc6-491b-84bc-48da8758ce65",
+						"ErrorType": "NoMatchingError"
+					}
+				]
+			}
+		},
+		{
+			"Parameters": {
+				"Attributes": {
+					"transferTarget": "$.External.handoff_transferTarget"
+				},
+				"TargetContact": "Current"
+			},
+			"Identifier": "60eee377-0b5e-48e6-bc90-177a210d7608",
+			"Type": "UpdateContactAttributes",
+			"Transitions": {
+				"NextAction": "df4d930c-c19a-4a4a-8ef7-ae8f2cf91771",
+				"Errors": [
+					{
+						"NextAction": "13918deb-0fc6-491b-84bc-48da8758ce65",
+						"ErrorType": "NoMatchingError"
+					}
+				]
+			}
+		}
+	]
+}

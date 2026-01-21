@@ -1,0 +1,29 @@
+{
+	"name": "oauth_token_fetch_failure",
+	"description": "Handler fails when OAuth token fetch fails",
+	"mock": {
+		"path": "/v1/oauth/regionalToken",
+		"method": "POST",
+		"responses": [
+			{
+				"status": 401,
+				"body": {
+					"error": "invalid_client",
+					"error_description": "Client authentication failed"
+				}
+			}
+		]
+	},
+	"test": {
+		"type": "handler",
+		"action": "getPSTNTransferData",
+		"auth": {
+			"type": "oauth",
+			"region": "us-west-2-prod"
+		}
+	},
+	"expectations": {
+		"shouldFail": true,
+		"errorContains": "token"
+	}
+}

@@ -1,7 +1,11 @@
 #!/bin/bash
 
-# Change to project root directory (parent of scripts directory)
-cd "$(dirname "$0")/.." || exit 1
+# Get the directory where the script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
+
+# Change to project root directory
+cd "$PROJECT_ROOT" || exit 1
 
 # Function to extract JSON value
 extract_json_value() {
@@ -141,8 +145,48 @@ echo ""
 echo "Configuration saved to var.json"
 echo ""
 
-# Build the zip
-GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o bootstrap . && zip -j aws-lambda-connect-pstn-transfer.zip bootstrap
+# Ask which implementation to deploy
+echo "Which Lambda implementation would you like to deploy?"
+echo "1) Go (provided.al2023 runtime, ARM64)"
+echo "2) TypeScript (Node.js runtime, ARM64)"
+read -p "Enter choice [1 or 2] (default: 1): " implementation_choice
+
+if [ -z "$implementation_choice" ]; then
+    implementation_choice="1"
+fi
+
+case "$implementation_choice" in
+    1)
+        IMPLEMENTATION="go"
+        RUNTIME="provided.al2023"
+        HANDLER="bootstrap"
+        ARCHITECTURE="arm64"
+        ZIP_FILE="aws-lambda-connect-pstn-transfer.zip"
+        BUILD_SCRIPT="build-go-lambda.sh"
+        ;;
+    2)
+        IMPLEMENTATION="typescript"
+        RUNTIME="nodejs20.x"
+        HANDLER="dist/handler.handler"
+        ARCHITECTURE="arm64"
+        ZIP_FILE="aws-lambda-connect-pstn-transfer-ts.zip"
+        BUILD_SCRIPT="build-typescript-lambda.sh"
+        ;;
+    *)
+        echo "Error: Invalid choice. Please enter 1 or 2."
+        exit 1
+        ;;
+esac
+
+echo ""
+echo "Deploying $IMPLEMENTATION implementation..."
+echo "  Runtime: $RUNTIME"
+echo "  Handler: $HANDLER"
+echo "  Architecture: $ARCHITECTURE"
+echo ""
+
+# Build the zip using the appropriate build script
+"$SCRIPT_DIR/$BUILD_SCRIPT"
 
 # Get the account ID
 account_id=$(aws sts get-caller-identity --query "Account" --output text)
@@ -188,19 +232,32 @@ if [ -z "$already_exists" ]; then
     role_arn=$(aws iam get-role --role-name $role_name --query "Role.Arn" --output text 2>/dev/null)
     # Try to create the function, if it already exists, update the code
     aws lambda create-function --function-name $function_name \
-        --runtime provided.al2023 --handler bootstrap \
-        --zip-file fileb://aws-lambda-connect-pstn-transfer.zip \
+        --runtime "$RUNTIME" --handler "$HANDLER" \
+        --zip-file "fileb://$ZIP_FILE" \
         --role $role_arn \
-        --architectures arm64 \
+        --architectures "$ARCHITECTURE" \
         --no-cli-pager \
         --environment "{\"Variables\":$(cat var.json)}"
 else
     # Update the function code
     aws lambda update-function-code --function-name $function_name \
-        --zip-file fileb://aws-lambda-connect-pstn-transfer.zip \
+        --zip-file "fileb://$ZIP_FILE" \
         --no-cli-pager
 
+    # Wait for the code update to complete
+    echo "Waiting for function code update to complete..."
+    aws lambda wait function-updated --function-name $function_name
+
+    # Update runtime and handler if switching implementations
     aws lambda update-function-configuration --function-name $function_name \
+        --runtime "$RUNTIME" \
+        --handler "$HANDLER" \
         --environment "{\"Variables\":$(cat var.json)}" \
         --no-cli-pager
 fi
+
+echo ""
+echo "Deployment complete!"
+echo "Function name: $function_name"
+echo "Implementation: $IMPLEMENTATION"
+echo "Runtime: $RUNTIME"
