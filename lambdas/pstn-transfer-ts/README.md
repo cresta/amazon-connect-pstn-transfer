@@ -44,6 +44,18 @@ npm run package
 
 This creates a zip file at `../aws-lambda-connect-pstn-transfer-ts.zip` ready for Lambda deployment.
 
+### Local Development
+
+1. Use VS Code's debugger:
+   - Select "Launch (TypeScript)" from the debug configuration dropdown
+   - When prompted, select a test event file from `shared/testdata/events/` (e.g., `test_get_handoff_data.json`)
+   - When prompted, enter:
+     - `oauthClientId`: OAuth 2 client ID
+     - `oauthClientSecret`: OAuth 2 client secret
+     - `region`: AWS region (e.g., `us-west-2-prod`)
+   - The debugger will start and execute the Lambda function with your selected test event
+2. Check the debug console for output and response
+
 ## Deployment
 
 This TypeScript Lambda can be deployed alongside or instead of the Go implementation. Both implementations are functionally equivalent and validated using the shared integration tests in `shared/testdata/`.
@@ -148,6 +160,8 @@ You can also deploy the Lambda function manually through the AWS Console. Follow
      - `region`: Your AWS region (e.g., `us-west-2-prod`)
      - `virtualAgentName`: Resource name in format `customers/{customer}/profiles/{profile}/virtualAgents/{virtualAgentID}`
    - Click "Save"
+   
+   > **Note**: These values can also be passed as parameters from your Amazon Connect flow. Parameters passed from Amazon Connect take precedence over environment variables. It's recommended to set sensitive values (like credentials) as environment variables and pass `action` and other flow-specific values as parameters.
 
 7. **Configure IAM Role**
    - Go to "Configuration" → "Permissions"
@@ -157,7 +171,7 @@ You can also deploy the Lambda function manually through the AWS Console. Follow
 
 8. **Test the Function**
    - Go to the "Test" tab
-   - Create a test event or use an existing one from the `shared/testdata` folder.
+   - Create a test event or use an existing one from the `shared/testdata/events/` folder.
      - e.g. `test_get_handoff_data.json`
    - Run the test to verify the function works correctly
 
@@ -185,16 +199,5 @@ You can also deploy the Lambda function manually through the AWS Console. Follow
 - `src/logger.ts` - Logging utility
 - `src/utils.ts` - Utility functions (validation, parsing, etc.)
 - `src/models.ts` - TypeScript type definitions
-
-## Testing
-
-The test suite matches the Go implementation's test structure and validates:
-- Successful requests for both actions
-- Error handling
-- Parameter filtering
-- Authentication (OAuth 2)
-- Response transformation
-
-Tests use Jest and can be run with `npm test`.
 
 **Note**: The shared integration tests that validate both Go and TypeScript implementations are located in `shared/testdata/` and should be run separately. See the [Shared Tests README](../../shared/testdata/README.md) for details.
