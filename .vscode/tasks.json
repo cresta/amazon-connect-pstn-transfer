@@ -6,7 +6,7 @@
 			"type": "command",
 			"command": "filePicker.pick",
 			"args": {
-				"masks": "shared/testdata/*.json",
+				"masks": "shared/testdata/events/*.json",
 				"display": {
 					"type": "fileName",
 					"json": "name"
@@ -17,29 +17,12 @@
 	],
 	"tasks": [
 		{
-			"label": "build-debug-go",
-			"type": "shell",
-			"command": "go build -v -gcflags='all=-N -l' .",
-			"options": {
-				"cwd": "${workspaceFolder}/lambdas/pstn-transfer-go"
-			}
-		},
-		{
 			"label": "build-lambda-go",
 			"type": "shell",
 			"command": "./scripts/build-go-lambda.sh",
 			"options": {
 				"cwd": "${workspaceFolder}"
 			}
-		},
-		{
-			"label": "build-debug-typescript",
-			"type": "shell",
-			"command": "npm run build",
-			"options": {
-				"cwd": "${workspaceFolder}/lambdas/pstn-transfer-ts"
-			},
-			"problemMatcher": "$tsc"
 		},
 		{
 			"label": "build-lambda-typescript",

@@ -45,7 +45,7 @@
 			"type": "command",
 			"command": "filePicker.pick",
 			"args": {
-				"masks": "shared/testdata/*.json",
+				"masks": "shared/testdata/events/*.json",
 				"display": {
 					"type": "fileName",
 					"json": "name"
@@ -71,18 +71,6 @@
 			"id": "region",
 			"description": "Enter the region (e.g., us-west-2-prod, voice-prod, chat-prod).",
 			"default": "us-west-2-prod"
-		}
-	],
-	"compounds": [
-		{
-			"name": "build and debug (Go)",
-			"configurations": ["Launch (Go)"],
-			"preLaunchTask": "build-debug-go"
-		},
-		{
-			"name": "build and debug (TypeScript)",
-			"configurations": ["Launch (TypeScript)"],
-			"preLaunchTask": "build-debug-typescript"
 		}
 	]
 }

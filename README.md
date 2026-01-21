@@ -36,12 +36,17 @@ It provides two main functionalities:
 
 ### Configuration
 
-The function accepts the following parameters (either through event parameters or environment variables):
-It is recommended to only set `action` via parameter and the rest via environment variable.
+The function accepts configuration in two ways:
+- **Environment variables**: Set in the Lambda function configuration (recommended for sensitive values like credentials)
+- **Amazon Connect parameters**: Passed in the `Parameters` section of the Lambda invocation from your Connect flow
+
+> **Note**: Parameters passed from Amazon Connect take precedence over environment variables. It is recommended to set `action` via Amazon Connect parameter and the rest via environment variables for better security and flexibility.
 
 - **action**: The action to perform, either `get_pstn_transfer_data` or `get_handoff_data`. Required.
 - **region**: AWS region with suffix (e.g., `us-west-2-prod` or `us-west-2-staging`). Required.
 - **virtualAgentName**: The resourcename of the virtual agent the call is transferred to. Format: `customers/{customer}/profiles/{profile}/virtualAgents/{virtualAgentID}`. Required.
+
+> **Note**: Any additional parameters passed from Amazon Connect (beyond the required ones listed above) will be included in the `ccaasMetadata` sent to the backend API. This allows you to pass custom metadata from your Connect flow to the backend.
 
 #### Authentication
 
@@ -72,6 +77,8 @@ The Lambda function expects an Amazon Connect event with the following structure
   }
 }
 ```
+
+> **Note**: The `customParameter` in the example above (and any other parameters beyond the required ones) will be included in the `ccaasMetadata` sent to the backend API.
 
 #### Supported Actions
 

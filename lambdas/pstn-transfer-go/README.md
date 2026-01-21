@@ -32,13 +32,15 @@ go test ./...
 
 ### Local Development
 
-1. Export authentication credentials:
-   - `export oauthClientId=<client-id>` and `export oauthClientSecret=<client-secret>`
-2. Export other required variables: `export region=<region>` (e.g., `us-west-2-prod`)
-3. Export optional variables: `export supportedDtmfChars=<dtmf-chars>` (defaults to `0123456789*` if not provided).
-4. Run the `build and debug` function through VS Code's debugger after making changes
-5. Use the provided test event in `shared/testdata/` via `cmd + shift P -> Run Task -> event`
-6. Check the debug console for output and response
+1. Use VS Code's debugger:
+   - Select "Launch (Go)" from the debug configuration dropdown
+   - When prompted, enter:
+     - `oauthClientId`: OAuth 2 client ID
+     - `oauthClientSecret`: OAuth 2 client secret
+     - `region`: AWS region (e.g., `us-west-2-prod`)
+   - The debugger will start the Lambda function as a local server on port 8080
+   - Use the `event-go` task (`cmd + shift P -> Run Task -> event-go`) to send test events from `shared/testdata/events/` to the running Lambda
+2. Check the debug console for output and response
 
 ## Deployment
 
@@ -137,6 +139,8 @@ You can also deploy the Lambda function manually through the AWS Console. Follow
      - `region`: Your AWS region (e.g., `us-west-2-prod`)
      - `virtualAgentName`: Resource name in format `customers/{customer}/profiles/{profile}/virtualAgents/{virtualAgentID}`
    - Click "Save"
+   
+   > **Note**: These values can also be passed as parameters from your Amazon Connect flow. Parameters passed from Amazon Connect take precedence over environment variables. It's recommended to set sensitive values (like credentials) as environment variables and pass `action` and other flow-specific values as parameters.
 
 7. **Configure IAM Role**
    - Go to "Configuration" → "Permissions"
@@ -146,8 +150,8 @@ You can also deploy the Lambda function manually through the AWS Console. Follow
 
 8. **Test the Function**
    - Go to the "Test" tab
-   - Create a test event or use an existing one from the `shared/testdata` folder.
-      - e.g. `test_get_handoff_data.json`
+   - Create a test event or use an existing one from the `shared/testdata/events/` folder.
+     - e.g. `test_get_handoff_data.json`
    - Run the test to verify the function works correctly
 
 #### Architecture and Configuration Details
@@ -174,14 +178,3 @@ You can also deploy the Lambda function manually through the AWS Console. Follow
 - `utils.go` - Utility functions (validation, parsing, etc.)
 - `models.go` - Go type definitions
 - `*_test.go` - Test files
-
-## Testing
-
-The test suite validates:
-- Successful requests for both actions
-- Error handling
-- Parameter filtering
-- Authentication (OAuth 2)
-- Response transformation
-
-Tests use the standard Go testing package and can be run with `go test ./...`.
