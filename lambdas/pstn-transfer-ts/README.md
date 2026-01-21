@@ -12,7 +12,7 @@ This TypeScript implementation provides the same functionality as the Go impleme
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 24+ 
 - npm or yarn
 
 ### Setup

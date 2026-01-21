@@ -47,7 +47,9 @@ describe("Integration Tests - Shared Scenarios", () => {
 	}, 60000); // 60 second timeout for building
 
 	afterAll(async () => {
-		await mockServer.stop();
+		if (mockServer) {
+			await mockServer.stop();
+		}
 		// Cleanup temp directory
 		if (tempDir && fs.existsSync(tempDir)) {
 			fs.rmSync(tempDir, { recursive: true, force: true });
@@ -55,7 +57,9 @@ describe("Integration Tests - Shared Scenarios", () => {
 	});
 
 	beforeEach(() => {
-		mockServer.reset();
+		if (mockServer) {
+			mockServer.reset();
+		}
 	});
 
 	/**

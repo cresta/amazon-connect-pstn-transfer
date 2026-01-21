@@ -196,8 +196,9 @@ export function validatePathSegment(segment: string, name: string): void {
 		throw new Error(`${name} contains invalid characters (path traversal detected): ${segment}`);
 	}
 
-	// Reject URL-encoded path traversal
-	if (segment.includes("%2e%2e") || segment.includes("%2E%2E")) {
+	// Reject URL-encoded path traversal (case-insensitive)
+	const lowerSegment = segment.toLowerCase();
+	if (lowerSegment.includes("%2e%2e")) {
 		throw new Error(`${name} contains URL-encoded path traversal: ${segment}`);
 	}
 

@@ -102,11 +102,24 @@ export class Handlers {
 		const result = parsed as FetchAIAgentHandoffResponse;
 		this.logger.debugf("Received response: %+v", result);
 
+		// Validate required handoff fields exist and are the expected types
+		const handoff = result.handoff;
+		if (
+			typeof handoff.conversation !== "string" ||
+			typeof handoff.conversationCorrelationId !== "string" ||
+			typeof handoff.summary !== "string" ||
+			typeof handoff.transferTarget !== "string"
+		) {
+			throw new Error(
+				`invalid handoff response: missing or invalid required fields (conversation, conversationCorrelationId, summary, transferTarget)`,
+			);
+		}
+
 		return {
-			handoff_conversation: result.handoff.conversation,
-			handoff_conversationCorrelationId: result.handoff.conversationCorrelationId,
-			handoff_summary: result.handoff.summary,
-			handoff_transferTarget: result.handoff.transferTarget,
+			handoff_conversation: handoff.conversation,
+			handoff_conversationCorrelationId: handoff.conversationCorrelationId,
+			handoff_summary: handoff.summary,
+			handoff_transferTarget: handoff.transferTarget,
 		};
 	}
 }

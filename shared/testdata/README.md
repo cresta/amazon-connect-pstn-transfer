@@ -8,7 +8,7 @@ The tests build both implementations as executables and run them against a mock 
 
 ## Prerequisites
 
-- Node.js (v18 or higher)
+- Node.js (v24 or higher)
 - Go (v1.21 or higher)
 - npm dependencies installed in this directory
 - Go dependencies installed in `lambdas/pstn-transfer-go/`

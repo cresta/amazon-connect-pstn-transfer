@@ -82,7 +82,7 @@ Resources:
       Runtime: !If
         - IsGoImplementation
         - provided.al2023
-        - nodejs20.x
+        - nodejs24.x
       Handler: !If
         - IsGoImplementation
         - bootstrap

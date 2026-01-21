@@ -12,7 +12,7 @@ This Go implementation provides the same functionality as the TypeScript impleme
 
 ### Prerequisites
 
-- Go 1.x
+- Go 1.22+
 - AWS CLI configured with appropriate credentials
 - Visual Studio Code (recommended)
 - ZIP utility

@@ -166,7 +166,7 @@ case "$implementation_choice" in
         ;;
     2)
         IMPLEMENTATION="typescript"
-        RUNTIME="nodejs20.x"
+        RUNTIME="nodejs24.x"
         HANDLER="dist/handler.handler"
         ARCHITECTURE="arm64"
         ZIP_FILE="aws-lambda-connect-pstn-transfer-ts.zip"

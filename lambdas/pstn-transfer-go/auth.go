@@ -158,7 +158,9 @@ func (f *DefaultOAuth2TokenFetcher) GetToken(ctx context.Context, region, client
 	if tokenResponse.ExpiresIn > 0 {
 		tokenCache.SetToken(region, clientID, tokenResponse.AccessToken, time.Duration(tokenResponse.ExpiresIn)*time.Second)
 	} else {
-		f.logger.Errorf("token response has invalid expires_in (value: %d), token will not be cached. Response: %+v", tokenResponse.ExpiresIn, tokenResponse)
+		if f.logger != nil {
+			f.logger.Errorf("token response has invalid expires_in (value: %d), token will not be cached", tokenResponse.ExpiresIn)
+		}
 		// Return error since we cannot cache the token and it may expire immediately
 		return "", fmt.Errorf("invalid token response: expires_in is %d (must be > 0)", tokenResponse.ExpiresIn)
 	}

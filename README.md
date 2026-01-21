@@ -33,7 +33,7 @@ This repository contains multiple implementations of the Lambda function, all fu
 ### TypeScript Implementation
 - **Location**: [`lambdas/pstn-transfer-ts/`](./lambdas/pstn-transfer-ts/)
 - **README**: [TypeScript Implementation README](./lambdas/pstn-transfer-ts/README.md)
-- **Runtime**: Node.js 18+
+- **Runtime**: Node.js 24+
 - **Architecture**: ARM64 or x86_64
 
 Both implementations provide identical functionality and can be used interchangeably. Choose the implementation that best fits your team's expertise and infrastructure requirements.
@@ -55,6 +55,64 @@ Usage:
 # Build TypeScript Lambda
 ./scripts/build-typescript-lambda.sh
 ```
+
+### Running Tests
+
+To run all tests (Go, TypeScript, and shared integration tests) in one command:
+
+```bash
+./scripts/test-all.sh
+```
+
+This script will:
+- Run Go unit tests (`go test ./lambdas/pstn-transfer-go/...`)
+- Run TypeScript unit tests (`npm test` in `lambdas/pstn-transfer-ts`)
+- Run shared integration tests (`npm test` in `shared/testdata`)
+
+The script will continue running all test suites even if one fails, and report a summary at the end. Exit code 0 indicates all tests passed, exit code 1 indicates at least one test suite failed.
+
+You can also run tests individually:
+- **Go tests**: `go test ./lambdas/pstn-transfer-go/...`
+- **TypeScript tests**: `cd lambdas/pstn-transfer-ts && npm test`
+- **Shared integration tests**: `cd shared/testdata && npm test`
+
+### Linting
+
+To run all linters (Go and TypeScript) in one command:
+
+```bash
+./scripts/lint-all.sh
+```
+
+This script will:
+- Run Go linting (`gofmt -l` and `go vet` for `lambdas/pstn-transfer-go`)
+- Run TypeScript linting (`npm run lint` in `lambdas/pstn-transfer-ts`)
+
+The script will continue running all linters even if one fails, and report a summary at the end. Exit code 0 indicates all linters passed, exit code 1 indicates at least one linter found issues.
+
+You can also run linters individually:
+- **Go linting**: `gofmt -l ./lambdas/pstn-transfer-go` and `go vet ./lambdas/pstn-transfer-go/...`
+- **TypeScript linting**: `cd lambdas/pstn-transfer-ts && npm run lint`
+- **TypeScript lint with auto-fix**: `cd lambdas/pstn-transfer-ts && npm run lint:fix`
+
+### Formatting
+
+To format all code (Go and TypeScript) in one command:
+
+```bash
+./scripts/format-all.sh
+```
+
+This script will:
+- Format Go code (`gofmt -w` for `lambdas/pstn-transfer-go`)
+- Format TypeScript code (`npm run format` in `lambdas/pstn-transfer-ts`)
+
+The script will continue formatting all code even if one formatter fails, and report a summary at the end. Exit code 0 indicates all code was formatted successfully, exit code 1 indicates at least one formatter failed.
+
+You can also format code individually:
+- **Go formatting**: `gofmt -w ./lambdas/pstn-transfer-go`
+- **TypeScript formatting**: `cd lambdas/pstn-transfer-ts && npm run format`
+- **TypeScript format check (no changes)**: `cd lambdas/pstn-transfer-ts && npm run format:check`
 
 ### Shared Integration Tests
 

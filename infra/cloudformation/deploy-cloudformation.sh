@@ -92,8 +92,15 @@ echo ""
 
 # Build the zip using the appropriate build script
 echo "Building Lambda function ($lambda_impl)..."
+# Remove any existing ZIP file to avoid stale artifacts
+if [ -f "$CODE_ZIP" ]; then
+    rm -f "$CODE_ZIP"
+fi
 "$BUILD_SCRIPT"
-
+if [ $? -ne 0 ]; then
+    echo "Error: Build script failed"
+    exit 1
+fi
 if [ ! -f "$CODE_ZIP" ]; then
     echo "Error: Failed to create deployment package: $CODE_ZIP"
     exit 1

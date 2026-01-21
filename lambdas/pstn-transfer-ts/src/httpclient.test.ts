@@ -5,11 +5,17 @@
 import { exponentialBackoff, isRetryableError, RetryHTTPClient } from "./httpclient.js";
 import { Logger } from "./logger.js";
 
-// Mock fetch globally
-globalThis.fetch = jest.fn() as typeof fetch;
-
 describe("RetryHTTPClient", () => {
 	let logger: Logger;
+	const originalFetch = globalThis.fetch;
+
+	beforeAll(() => {
+		globalThis.fetch = jest.fn() as typeof fetch;
+	});
+
+	afterAll(() => {
+		globalThis.fetch = originalFetch;
+	});
 
 	beforeEach(() => {
 		jest.clearAllMocks();

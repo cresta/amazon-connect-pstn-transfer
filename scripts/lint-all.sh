@@ -1,0 +1,83 @@
+#!/bin/bash
+
+# Lint script that runs linting for all implementations
+# Runs Go linting (gofmt, go vet) and TypeScript linting (eslint)
+
+# Note: We don't use set -e here because we want to run all linters
+# even if one fails, then report the overall status
+
+# Get the directory where the script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
+
+# Change to project root
+cd "$PROJECT_ROOT" || exit 1
+
+echo "=== Running All Linters ==="
+echo ""
+
+# Track if any linters failed
+LINT_FAILED=0
+
+# Run Go linting
+echo "--- Running Go Linters ---"
+if [ -d "lambdas/pstn-transfer-go" ]; then
+    if command -v go &> /dev/null; then
+        # Check gofmt
+        if command -v gofmt &> /dev/null; then
+            UNFORMATTED=$(gofmt -l ./lambdas/pstn-transfer-go)
+            if [ -z "$UNFORMATTED" ]; then
+                echo "✓ gofmt: all files formatted"
+            else
+                echo "✗ gofmt: files need formatting:"
+                echo "$UNFORMATTED"
+                LINT_FAILED=1
+            fi
+        else
+            echo "⚠ gofmt not found, skipping"
+        fi
+        
+        # Run go vet
+        if go vet ./lambdas/pstn-transfer-go/...; then
+            echo "✓ go vet: no issues found"
+        else
+            echo "✗ go vet: issues found"
+            LINT_FAILED=1
+        fi
+    else
+        echo "⚠ Go not found, skipping Go linting"
+    fi
+else
+    echo "⚠ Go implementation directory not found, skipping Go linting"
+fi
+echo ""
+
+# Run TypeScript linting
+echo "--- Running TypeScript Linter ---"
+if [ -d "lambdas/pstn-transfer-ts" ]; then
+    if command -v npm &> /dev/null; then
+        cd lambdas/pstn-transfer-ts
+        if npm run lint; then
+            echo "✓ TypeScript linting passed"
+        else
+            echo "✗ TypeScript linting failed"
+            LINT_FAILED=1
+        fi
+        cd "$PROJECT_ROOT"
+    else
+        echo "⚠ npm not found, skipping TypeScript linting"
+    fi
+else
+    echo "⚠ TypeScript implementation directory not found, skipping TypeScript linting"
+fi
+echo ""
+
+# Summary
+echo "=== Lint Summary ==="
+if [ $LINT_FAILED -eq 0 ]; then
+    echo "✓ All linters passed!"
+    exit 0
+else
+    echo "✗ Some linters failed"
+    exit 1
+fi
