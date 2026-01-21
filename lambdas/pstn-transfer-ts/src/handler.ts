@@ -10,14 +10,13 @@ import type { AuthConfig } from "./httpclient.js";
 import { type Logger, newLogger } from "./logger.js";
 import {
 	buildAPIDomainFromRegion,
-	type ConnectEvent,
-	type ConnectResponse,
 	extractRegionFromDomain,
 	getFromEventParameterOrEnv,
 	parseVirtualAgentName,
 	validateDomain,
 	validatePathSegment,
 } from "./utils.js";
+import type { ConnectEvent, ConnectResponse } from "./types.js";
 
 export interface HandlerService {
 	handle(signal: AbortSignal, event: ConnectEvent): Promise<ConnectResponse>;

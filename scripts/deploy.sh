@@ -229,7 +229,7 @@ if [ -z "$role_exists" ]; then
 fi
 
 # Check if the function already exists
-already_exists=$(aws lambda get-function --function-name $function_name --query "Configuration.FunctionName" --output text)
+already_exists=$(aws lambda get-function --function-name "$function_name" --query "Configuration.FunctionName" --output text 2>/dev/null)
 
 if [ -z "$already_exists" ]; then
     role_arn=$(aws iam get-role --role-name $role_name --query "Role.Arn" --output text 2>/dev/null)

@@ -27,17 +27,8 @@ if [ ! -d "node_modules" ]; then
     npm ci
 fi
 
-# Build TypeScript
-echo "Compiling TypeScript..."
-npm run build
-
-if [ ! -d "dist" ]; then
-    echo "Error: Build failed - dist directory not found"
-    exit 1
-fi
-
-# Create deployment package
-echo "Creating deployment package..."
+# Build and bundle TypeScript using esbuild
+echo "Bundling TypeScript with esbuild..."
 npm run package
 
 # The package script creates the zip in the parent directory (lambdas/)

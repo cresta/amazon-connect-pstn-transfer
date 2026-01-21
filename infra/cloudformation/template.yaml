@@ -54,7 +54,6 @@ Parameters:
 
 Conditions:
   IsGoImplementation: !Equals [!Ref LambdaImplementation, "go"]
-  IsTypeScriptImplementation: !Equals [!Ref LambdaImplementation, "typescript"]
   UseDefaultCodeS3Key: !Equals [!Ref CodeS3Key, ""]
 
 Resources:

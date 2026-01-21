@@ -5,8 +5,8 @@
 import type { OAuth2TokenFetcher } from "./auth.js";
 import { DefaultHandlerService, handler } from "./handler.js";
 import { Logger } from "./logger.js";
-import type { FetchAIAgentHandoffResponse } from "./models.js";
-import type { ConnectEvent, ConnectResponse } from "./utils.js";
+import type { FetchAIAgentHandoffResponse } from "./types.js";
+import type { ConnectEvent, ConnectResponse } from "./types.js";
 
 // Mock fetch globally
 globalThis.fetch = jest.fn() as typeof fetch;

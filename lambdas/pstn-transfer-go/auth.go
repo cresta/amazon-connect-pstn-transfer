@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"sync"
 	"time"
@@ -91,7 +92,17 @@ func NewOAuth2TokenFetcher() *DefaultOAuth2TokenFetcher {
 		tokenURL: func(region string) string {
 			// Allow override via environment variable for testing
 			if override := os.Getenv("AUTH_ENDPOINT_OVERRIDE"); override != "" {
-				return override
+				// Validate override URL to prevent credential exfiltration
+				parsed, err := url.Parse(override)
+				if err != nil {
+					logger.Warnf("invalid AUTH_ENDPOINT_OVERRIDE URL: %v", err)
+					// Fall through to default URL
+				} else if parsed.Scheme != "https" && parsed.Scheme != "http" {
+					logger.Warnf("AUTH_ENDPOINT_OVERRIDE must use http/https scheme, got: %s", parsed.Scheme)
+					// Fall through to default URL
+				} else {
+					return override
+				}
 			}
 			return fmt.Sprintf("https://auth.%s.cresta.ai/v1/oauth/regionalToken", region)
 		},

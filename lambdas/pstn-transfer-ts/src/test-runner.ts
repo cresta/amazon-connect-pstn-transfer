@@ -7,7 +7,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { handler } from "./handler.js";
-import type { ConnectEvent } from "./utils.js";
+import type { ConnectEvent } from "./types.js";
 
 async function main() {
 	try {

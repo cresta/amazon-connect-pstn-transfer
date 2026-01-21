@@ -96,9 +96,8 @@ echo "Building Lambda function ($lambda_impl)..."
 if [ -f "$CODE_ZIP" ]; then
     rm -f "$CODE_ZIP"
 fi
-"$BUILD_SCRIPT"
-if [ $? -ne 0 ]; then
-    echo "Error: Build script failed"
+if ! "$BUILD_SCRIPT"; then
+    echo "Error: Build script failed: $BUILD_SCRIPT"
     exit 1
 fi
 if [ ! -f "$CODE_ZIP" ]; then

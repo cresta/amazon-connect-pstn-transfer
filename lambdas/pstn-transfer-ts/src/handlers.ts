@@ -4,8 +4,8 @@
 
 import type { CrestaAPIClient } from "./client.js";
 import type { Logger } from "./logger.js";
-import type { FetchAIAgentHandoffResponse } from "./models.js";
-import { type ConnectEvent, type ConnectResponse, copyMap } from "./utils.js";
+import type { ConnectEvent, ConnectResponse, FetchAIAgentHandoffResponse } from "./types.js";
+import { copyMap } from "./utils.js";
 
 const FilteredKeys: Record<string, boolean> = {
 	apiDomain: true,
@@ -70,7 +70,14 @@ export class Handlers {
 
 		const body = await this.apiClient.makeRequest(signal, "POST", url, payload);
 
-		const result: ConnectResponse = JSON.parse(new TextDecoder().decode(body)) as ConnectResponse;
+		let result: ConnectResponse;
+		try {
+			result = JSON.parse(new TextDecoder().decode(body)) as ConnectResponse;
+		} catch (error) {
+			throw new Error(
+				`failed to parse JSON response from ${url}: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
 
 		this.logger.debugf("Received response: %+v", result);
 		return result;

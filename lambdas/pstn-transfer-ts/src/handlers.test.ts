@@ -5,8 +5,8 @@
 import type { CrestaAPIClient } from "./client.js";
 import { Handlers } from "./handlers.js";
 import { Logger } from "./logger.js";
-import type { FetchAIAgentHandoffResponse } from "./models.js";
-import type { ConnectEvent } from "./utils.js";
+import type { FetchAIAgentHandoffResponse } from "./types.js";
+import type { ConnectEvent } from "./types.js";
 
 // Mock fetch globally
 globalThis.fetch = jest.fn() as typeof fetch;

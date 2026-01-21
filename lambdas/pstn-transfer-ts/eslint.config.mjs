@@ -1,6 +1,7 @@
 import eslint from "@eslint/js";
 import prettierConfig from "eslint-config-prettier";
 import prettier from "eslint-plugin-prettier";
+import importPlugin from "eslint-plugin-import";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
@@ -16,6 +17,7 @@ export default tseslint.config(
 		},
 		plugins: {
 			prettier: prettier,
+			import: importPlugin,
 		},
 		rules: {
 			"prettier/prettier": "error",
@@ -34,6 +36,15 @@ export default tseslint.config(
 				"error",
 				{
 					checksVoidReturn: false,
+				},
+			],
+			// Enforce .js extensions in imports (required for ES modules)
+			"import/extensions": [
+				"error",
+				"ignorePackages",
+				{
+					js: "always",
+					ts: "never",
 				},
 			],
 		},

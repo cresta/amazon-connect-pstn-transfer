@@ -2,23 +2,10 @@
  * Utility functions matching the Go implementation
  */
 
+import type { ConnectEvent } from "./types.js";
+
 const API_DOMAIN_REGEX = /api\.([a-z0-9-]+)\.cresta\.(ai|com)/;
 const VIRTUAL_AGENT_NAME_REGEX = /^customers\/([^/]+)\/profiles\/([^/]+)\/virtualAgents\/([^/]+)$/;
-
-export interface ConnectEvent {
-	Details: {
-		ContactData: {
-			ContactId: string;
-			[key: string]: unknown;
-		};
-		Parameters: Record<string, string>;
-	};
-	Name?: string;
-}
-
-export interface ConnectResponse {
-	[key: string]: string | number | boolean | null;
-}
 
 /**
  * getFromEventParameterOrEnv retrieves a value from event parameters or environment variables
@@ -81,10 +68,14 @@ export function parseVirtualAgentName(virtualAgentName: string): {
  * e.g., "us-west-2-staging" -> "https://api.us-west-2-staging.cresta.ai"
  */
 export function buildAPIDomainFromRegion(region: string): string {
-	if (region.endsWith("-prod")) {
-		return `https://api.${region}.cresta.com`;
+	const normalized = region.toLowerCase();
+	if (!/^[a-z0-9-]+$/.test(normalized)) {
+		throw new Error(`invalid region: ${region}`);
 	}
-	return `https://api.${region}.cresta.ai`;
+	if (normalized.endsWith("-prod")) {
+		return `https://api.${normalized}.cresta.com`;
+	}
+	return `https://api.${normalized}.cresta.ai`;
 }
 
 /**

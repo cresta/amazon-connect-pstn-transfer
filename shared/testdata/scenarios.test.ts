@@ -95,8 +95,7 @@ describe("Integration Tests - Shared Scenarios", () => {
 				const expectsFailure =
 					scenario.expectations.shouldFail === true ||
 					(scenario.expectations.status !== undefined &&
-						scenario.expectations.status >= 400 &&
-						scenario.expectations.status < 500);
+						scenario.expectations.status >= 400);
 
 				if (expectsFailure) {
 					// Both should fail with similar errors
@@ -121,24 +120,23 @@ describe("Integration Tests - Shared Scenarios", () => {
 
 				// Validate Go result
 				expect(goResult.success).toBe(true);
-				if (!goResult.success) {
-					throw new Error(`Go execution failed: ${goResult.error}`);
-				}
 
 				// Validate TypeScript result
 				expect(tsResult.success).toBe(true);
-				if (!tsResult.success) {
-					throw new Error(`TypeScript execution failed: ${tsResult.error}`);
-				}
 
 				// Parse and compare responses
 				// Filter out log lines and extract JSON
-				const goResponse = JSON.parse(
-					extractJSON(goResult.output || "") || "{}",
-				);
-				const tsResponse = JSON.parse(
-					extractJSON(tsResult.output || "") || "{}",
-				);
+				const goJSON = extractJSON(goResult.output || "");
+				const tsJSON = extractJSON(tsResult.output || "");
+
+				if (!goJSON || !tsJSON) {
+					throw new Error(
+						`Missing or empty output: go=${!!goJSON}, ts=${!!tsJSON}`,
+					);
+				}
+
+				const goResponse = JSON.parse(goJSON);
+				const tsResponse = JSON.parse(tsJSON);
 
 				// Validate expectations
 				if (scenario.expectations.body) {

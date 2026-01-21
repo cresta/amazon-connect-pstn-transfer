@@ -46,15 +46,22 @@ The `scripts/` directory contains build scripts for both implementations:
 
 - **`build-go-lambda.sh`**: Builds the Go Lambda function for Linux ARM64
 - **`build-typescript-lambda.sh`**: Builds the TypeScript Lambda function
+- **`build-all.sh`**: Builds both Go and TypeScript Lambda functions
 
 Usage:
 ```bash
+# Build both Lambda functions
+./scripts/build-all.sh
+
+# Or build individually:
 # Build Go Lambda
 ./scripts/build-go-lambda.sh
 
 # Build TypeScript Lambda
 ./scripts/build-typescript-lambda.sh
 ```
+
+The `build-all.sh` script will continue building both implementations even if one fails, and report a summary at the end. Exit code 0 indicates all builds succeeded, exit code 1 indicates at least one build failed.
 
 ### Running Tests
 
