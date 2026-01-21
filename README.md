@@ -67,18 +67,20 @@ The Lambda function expects an Amazon Connect event with the following structure
       // Other contact data from Amazon Connect
     },
     "Parameters": {
+      // Recommended: Only pass action and flow-specific values as parameters
+      // Prefer setting oauthClientId, oauthClientSecret, region, and virtualAgentName as environment variables
       "action": "get_pstn_transfer_data",
-      "virtualAgentName": "customers/example/profiles/default/virtualAgents/agent1",
-      "region": "us-west-2-prod",
-      "oauthClientId": "your-client-id",
-      "oauthClientSecret": "your-client-secret",
+      // Optional: Any additional parameters will be included in ccaasMetadata
       "customParameter": "some_custom_value_that_will_be_passed_as_metadata"
     }
   }
 }
 ```
 
-> **Note**: The `customParameter` in the example above (and any other parameters beyond the required ones) will be included in the `ccaasMetadata` sent to the backend API.
+> **Note**: 
+> - It's recommended to set `oauthClientId`, `oauthClientSecret`, `region`, and `virtualAgentName` as environment variables in the Lambda function configuration for better security and maintainability.
+> - Only pass `action` and flow-specific values (like `customParameter` above) as parameters from Amazon Connect.
+> - Any additional parameters beyond the required ones will be included in the `ccaasMetadata` sent to the backend API.
 
 #### Supported Actions
 
