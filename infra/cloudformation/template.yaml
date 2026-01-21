@@ -2,6 +2,14 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: "AWS Lambda function for Amazon Connect PSTN Transfer"
 
 Parameters:
+  LambdaImplementation:
+    Type: String
+    Description: Lambda implementation type
+    AllowedValues:
+      - go
+      - typescript
+    Default: go
+
   OAuthClientId:
     Type: String
     NoEcho: true
@@ -31,9 +39,8 @@ Parameters:
 
   CodeS3Key:
     Type: String
-    Description: S3 key (path) to the Lambda deployment package (zip file)
-    Default: "aws-lambda-connect-pstn-transfer.zip"
-    MinLength: 1
+    Description: S3 key (path) to the Lambda deployment package (zip file). Defaults based on implementation type if not provided.
+    Default: ""
 
   FunctionName:
     Type: String
@@ -44,6 +51,10 @@ Parameters:
     Type: String
     Description: Name for the IAM role
     Default: "aws-lambda-connect-pstn-transfer-role"
+
+Conditions:
+  IsGoImplementation: !Equals [!Ref LambdaImplementation, "go"]
+  UseDefaultCodeS3Key: !Equals [!Ref CodeS3Key, ""]
 
 Resources:
   LambdaExecutionRole:
@@ -67,12 +78,26 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Ref FunctionName
-      Runtime: provided.al2023
-      Handler: bootstrap
+      Runtime: !If
+        - IsGoImplementation
+        - provided.al2023
+        - nodejs24.x
+      Handler: !If
+        - IsGoImplementation
+        - bootstrap
+        - dist/handler.handler
       Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 30
+      MemorySize: 256
       Code:
         S3Bucket: !Ref CodeS3Bucket
-        S3Key: !Ref CodeS3Key
+        S3Key: !If
+          - UseDefaultCodeS3Key
+          - !If
+            - IsGoImplementation
+            - aws-lambda-connect-pstn-transfer.zip
+            - aws-lambda-connect-pstn-transfer-ts.zip
+          - !Ref CodeS3Key
       Architectures:
         - arm64
       Environment:
@@ -84,6 +109,8 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "${FunctionName}"
+        - Key: Implementation
+          Value: !Ref LambdaImplementation
 
 Outputs:
   LambdaFunctionArn:

@@ -1,0 +1,35 @@
+{
+	"name": "pstn_transfer_retry_500",
+	"description": "PSTN transfer endpoint retries on 500 and eventually succeeds",
+	"mock": {
+		"path": "/v1/customers/test-customer/profiles/test-profile/virtualAgents/test-agent:generatePSTNTransferData",
+		"method": "POST",
+		"responses": [
+			{
+				"status": 500,
+				"body": {
+					"error": "Internal Server Error"
+				}
+			},
+			{
+				"status": 200,
+				"body": {
+					"phoneNumber": "+1234567890",
+					"dtmfSequence": "1234"
+				}
+			}
+		]
+	},
+	"test": {
+		"type": "handler",
+		"action": "getPSTNTransferData"
+	},
+	"expectations": {
+		"status": 200,
+		"retries": true,
+		"body": {
+			"phoneNumber": "+1234567890",
+			"dtmfSequence": "1234"
+		}
+	}
+}

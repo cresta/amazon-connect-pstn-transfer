@@ -1,0 +1,36 @@
+{
+	"name": "pstn_transfer_success",
+	"description": "PSTN transfer endpoint returns correct data",
+	"mock": {
+		"path": "/v1/customers/test-customer/profiles/test-profile/virtualAgents/test-agent:generatePSTNTransferData",
+		"method": "POST",
+		"responses": [
+			{
+				"status": 200,
+				"body": {
+					"phoneNumber": "+1234567890",
+					"dtmfSequence": "1234"
+				}
+			}
+		]
+	},
+	"test": {
+		"type": "handler",
+		"action": "getPSTNTransferData",
+		"event": {
+			"callId": "test-contact-id",
+			"ccaasMetadata": {
+				"ContactId": "test-contact-id",
+				"parameters": {}
+			},
+			"supportedDtmfChars": "0123456789*"
+		}
+	},
+	"expectations": {
+		"status": 200,
+		"body": {
+			"phoneNumber": "+1234567890",
+			"dtmfSequence": "1234"
+		}
+	}
+}

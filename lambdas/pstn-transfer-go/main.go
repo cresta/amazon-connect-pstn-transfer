@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -148,5 +149,27 @@ func (s *HandlerService) Handle(ctx context.Context, event events.ConnectEvent) 
 }
 
 func main() {
-	lambda.Start(handler)
+	// Support test mode: if --test flag is passed, read from stdin and write to stdout
+	if len(os.Args) > 1 && os.Args[1] == "--test" {
+		var event events.ConnectEvent
+		decoder := json.NewDecoder(os.Stdin)
+		if err := decoder.Decode(&event); err != nil {
+			fmt.Fprintf(os.Stderr, "Error decoding event: %v\n", err)
+			os.Exit(1)
+		}
+
+		result, err := handler(context.Background(), event)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		encoder := json.NewEncoder(os.Stdout)
+		if err := encoder.Encode(result); err != nil {
+			fmt.Fprintf(os.Stderr, "Error encoding response: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		lambda.Start(handler)
+	}
 }

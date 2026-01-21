@@ -2,7 +2,7 @@
 
 # Get the directory where the script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/../.." && pwd )"
 
 # Change to project root
 cd "$PROJECT_ROOT" || exit 1
@@ -10,8 +10,31 @@ cd "$PROJECT_ROOT" || exit 1
 echo "=== AWS Lambda CloudFormation Deployment ==="
 echo ""
 
-CODE_ZIP="aws-lambda-connect-pstn-transfer.zip"
 TEMPLATE_FILE="$SCRIPT_DIR/template.yaml"
+
+# Prompt for Lambda implementation type
+echo "Select Lambda implementation:"
+echo "1) Go (default)"
+echo "2) TypeScript"
+read -p "Enter choice [1-2] (default: 1): " impl_choice
+
+case "$impl_choice" in
+    2)
+        lambda_impl="typescript"
+        CODE_ZIP="aws-lambda-connect-pstn-transfer-ts.zip"
+        BUILD_SCRIPT="$PROJECT_ROOT/scripts/build-typescript-lambda.sh"
+        DEFAULT_CODE_S3_KEY="aws-lambda-connect-pstn-transfer-ts.zip"
+        ;;
+    *)
+        lambda_impl="go"
+        CODE_ZIP="aws-lambda-connect-pstn-transfer.zip"
+        BUILD_SCRIPT="$PROJECT_ROOT/scripts/build-go-lambda.sh"
+        DEFAULT_CODE_S3_KEY="aws-lambda-connect-pstn-transfer.zip"
+        ;;
+esac
+
+echo "Selected implementation: $lambda_impl"
+echo ""
 
 # Prompt for required values
 read -p "Enter CloudFormation stack name (required): " stack_name
@@ -50,9 +73,9 @@ if [ -z "$s3_bucket" ]; then
     exit 1
 fi
 
-read -p "Enter S3 key for Lambda code (optional, default: aws-lambda-connect-pstn-transfer.zip): " code_s3_key
+read -p "Enter S3 key for Lambda code (optional, default: $DEFAULT_CODE_S3_KEY): " code_s3_key
 if [ -z "$code_s3_key" ]; then
-    code_s3_key="aws-lambda-connect-pstn-transfer.zip"
+    code_s3_key="$DEFAULT_CODE_S3_KEY"
 fi
 
 read -p "Enter Lambda function name (optional, default: aws-lambda-connect-pstn-transfer): " function_name
@@ -65,40 +88,20 @@ if [ -z "$role_name" ]; then
     role_name="aws-lambda-connect-pstn-transfer-role"
 fi
 
-# Validate required fields
-if [ -z "$stack_name" ]; then
-    echo "Error: Stack name is required"
-    exit 1
-fi
-
-if [ -z "$oauth_client_id" ]; then
-    echo "Error: OAuth Client ID is required"
-    exit 1
-fi
-
-if [ -z "$oauth_client_secret" ]; then
-    echo "Error: OAuth Client Secret is required"
-    exit 1
-fi
-
-if [ -z "$virtual_agent_name" ]; then
-    echo "Error: Virtual Agent Name is required"
-    exit 1
-fi
-
-if [ -z "$s3_bucket" ]; then
-    echo "Error: S3 bucket name is required"
-    exit 1
-fi
-
 echo ""
 
-# Build the zip
-echo "Building Lambda function..."
-GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o bootstrap . && zip -j "$CODE_ZIP" bootstrap
-
+# Build the zip using the appropriate build script
+echo "Building Lambda function ($lambda_impl)..."
+# Remove any existing ZIP file to avoid stale artifacts
+if [ -f "$CODE_ZIP" ]; then
+    rm -f "$CODE_ZIP"
+fi
+if ! "$BUILD_SCRIPT"; then
+    echo "Error: Build script failed: $BUILD_SCRIPT"
+    exit 1
+fi
 if [ ! -f "$CODE_ZIP" ]; then
-    echo "Error: Failed to create deployment package"
+    echo "Error: Failed to create deployment package: $CODE_ZIP"
     exit 1
 fi
 
@@ -123,6 +126,7 @@ if [ -z "$stack_exists" ]; then
         --stack-name "$stack_name" \
         --template-body file://"$TEMPLATE_FILE" \
         --parameters \
+            ParameterKey=LambdaImplementation,ParameterValue="$lambda_impl" \
             ParameterKey=OAuthClientId,ParameterValue="$oauth_client_id" \
             ParameterKey=OAuthClientSecret,ParameterValue="$oauth_client_secret" \
             ParameterKey=VirtualAgentName,ParameterValue="$virtual_agent_name" \
@@ -150,6 +154,7 @@ else
         --stack-name "$stack_name" \
         --template-body file://"$TEMPLATE_FILE" \
         --parameters \
+            ParameterKey=LambdaImplementation,ParameterValue="$lambda_impl" \
             ParameterKey=OAuthClientId,ParameterValue="$oauth_client_id" \
             ParameterKey=OAuthClientSecret,ParameterValue="$oauth_client_secret" \
             ParameterKey=VirtualAgentName,ParameterValue="$virtual_agent_name" \

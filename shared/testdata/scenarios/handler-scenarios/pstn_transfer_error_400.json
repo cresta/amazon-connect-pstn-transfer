@@ -1,0 +1,25 @@
+{
+	"name": "pstn_transfer_error_400",
+	"description": "PSTN transfer endpoint does not retry on 400 errors",
+	"mock": {
+		"path": "/v1/customers/test-customer/profiles/test-profile/virtualAgents/test-agent:generatePSTNTransferData",
+		"method": "POST",
+		"responses": [
+			{
+				"status": 400,
+				"body": {
+					"error": "Bad Request",
+					"message": "Invalid request parameters"
+				}
+			}
+		]
+	},
+	"test": {
+		"type": "handler",
+		"action": "getPSTNTransferData"
+	},
+	"expectations": {
+		"status": 400,
+		"retries": false
+	}
+}

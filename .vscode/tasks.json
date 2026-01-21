@@ -1,42 +1,59 @@
 {
-    "version": "2.0.0",
-    "inputs": [
-        {
-            "id": "json",
-            "type": "command",
-            "command": "filePicker.pick",
-            "args": {
-                "masks": "events/*.json",
-                "display": {
-                    "type": "fileName",
-                    "json": "name"
-                },
-                "output": "fileRelativePath"
-            }
-        }
-    ],
-    "tasks": [
-        {
-            "label": "build-debug",
-            "type": "shell",
-            "command": "go build -v -gcflags='all=-N -l' .",
-            "options": {
-                "cwd": "${workspaceFolder}"
-            }
-        },
-        {
-            "label": "build-lambda",
-            "type": "shell",
-            "command": "GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o bootstrap . && zip -j aws-lambda-connect-pstn-transfer.zip bootstrap",
-            "options": {
-                "cwd": "${workspaceFolder}"
-            }
-        },
-        {
-            "label": "event",
-            "type": "shell",
-            "command": "go install github.com/blmayer/awslambdarpc && awslambdarpc -e ${input:json}",
-            "problemMatcher": []
-        }
-    ]
+	"version": "2.0.0",
+	"inputs": [
+		{
+			"id": "json",
+			"type": "command",
+			"command": "filePicker.pick",
+			"args": {
+				"masks": "shared/testdata/*.json",
+				"display": {
+					"type": "fileName",
+					"json": "name"
+				},
+				"output": "fileRelativePath"
+			}
+		}
+	],
+	"tasks": [
+		{
+			"label": "build-debug-go",
+			"type": "shell",
+			"command": "go build -v -gcflags='all=-N -l' .",
+			"options": {
+				"cwd": "${workspaceFolder}/lambdas/pstn-transfer-go"
+			}
+		},
+		{
+			"label": "build-lambda-go",
+			"type": "shell",
+			"command": "./scripts/build-go-lambda.sh",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			}
+		},
+		{
+			"label": "build-debug-typescript",
+			"type": "shell",
+			"command": "npm run build",
+			"options": {
+				"cwd": "${workspaceFolder}/lambdas/pstn-transfer-ts"
+			},
+			"problemMatcher": "$tsc"
+		},
+		{
+			"label": "build-lambda-typescript",
+			"type": "shell",
+			"command": "./scripts/build-typescript-lambda.sh",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			}
+		},
+		{
+			"label": "event-go",
+			"type": "shell",
+			"command": "go install github.com/blmayer/awslambdarpc && awslambdarpc -e ${input:json}",
+			"problemMatcher": []
+		}
+	]
 }

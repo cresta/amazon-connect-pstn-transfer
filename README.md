@@ -1,31 +1,142 @@
 # AWS Connect PSTN Transfer
 
-[![CloudFormation Template](https://img.shields.io/badge/View-CloudFormation%20Template-blue?logo=amazon-aws)](https://github.com/cresta/amazon-connect-pstn-transfer/blob/main/cloudformation/template.yaml)
+[![CloudFormation Template](https://img.shields.io/badge/View-CloudFormation%20Template-blue?logo=amazon-aws)](https://github.com/cresta/amazon-connect-pstn-transfer/blob/main/infra/cloudformation/template.yaml)
 
 This repo contains the required AWS resources for doing a transfer using PSTN only
 
-- **Lambda Function**
+- **Lambda Function** (Go and TypeScript implementations available)
 - **AWS Connect Flow**
 
 ## Table Of Contents
 - [AWS Connect PSTN Transfer](#aws-connect-pstn-transfer)
   - [Table Of Contents](#table-of-contents)
-  - [Lambda function](#lambda-function)
+  - [Lambda Function Implementations](#lambda-function-implementations)
+  - [Lambda Function Overview](#lambda-function-overview)
     - [Configuration](#configuration)
     - [Usage](#usage)
       - [Supported Actions](#supported-actions)
     - [Handoff Response Format](#handoff-response-format)
-  - [Development Setup](#development-setup)
-    - [Prerequisites](#prerequisites)
-    - [VS Code Configuration](#vs-code-configuration)
-  - [Deployment](#deployment)
-    - [Environment Configuration](#environment-configuration)
-    - [Manual Deployment](#manual-deployment)
-    - [Local Development](#local-development)
+    - [API Specification](#api-specification)
   - [Connect Flow](#connect-flow)
 
+## Lambda Function Implementations
 
-## Lambda function
+This repository contains multiple implementations of the Lambda function, all functionally equivalent:
+
+### Go Implementation
+- **Location**: [`lambdas/pstn-transfer-go/`](./lambdas/pstn-transfer-go/)
+- **README**: [Go Implementation README](./lambdas/pstn-transfer-go/README.md)
+- **Runtime**: Amazon Linux 2023 (Custom Runtime)
+- **Architecture**: ARM64
+- **Handler**: bootstrap
+
+### TypeScript Implementation
+- **Location**: [`lambdas/pstn-transfer-ts/`](./lambdas/pstn-transfer-ts/)
+- **README**: [TypeScript Implementation README](./lambdas/pstn-transfer-ts/README.md)
+- **Runtime**: Node.js 24+
+- **Architecture**: ARM64 or x86_64
+
+Both implementations provide identical functionality and can be used interchangeably. Choose the implementation that best fits your team's expertise and infrastructure requirements.
+
+For implementation-specific details, development setup, and deployment instructions, please refer to the respective README files linked above.
+
+### Build Scripts
+
+The `scripts/` directory contains build scripts for both implementations:
+
+- **`build-go-lambda.sh`**: Builds the Go Lambda function for Linux ARM64
+- **`build-typescript-lambda.sh`**: Builds the TypeScript Lambda function
+- **`build-all.sh`**: Builds both Go and TypeScript Lambda functions
+
+Usage:
+```bash
+# Build both Lambda functions
+./scripts/build-all.sh
+
+# Or build individually:
+# Build Go Lambda
+./scripts/build-go-lambda.sh
+
+# Build TypeScript Lambda
+./scripts/build-typescript-lambda.sh
+```
+
+The `build-all.sh` script will continue building both implementations even if one fails, and report a summary at the end. Exit code 0 indicates all builds succeeded, exit code 1 indicates at least one build failed.
+
+### Running Tests
+
+To run all tests (Go, TypeScript, and shared integration tests) in one command:
+
+```bash
+./scripts/test-all.sh
+```
+
+This script will:
+- Run Go unit tests (`go test ./lambdas/pstn-transfer-go/...`)
+- Run TypeScript unit tests (`npm test` in `lambdas/pstn-transfer-ts`)
+- Run shared integration tests (`npm test` in `shared/testdata`)
+
+The script will continue running all test suites even if one fails, and report a summary at the end. Exit code 0 indicates all tests passed, exit code 1 indicates at least one test suite failed.
+
+You can also run tests individually:
+- **Go tests**: `go test ./lambdas/pstn-transfer-go/...`
+- **TypeScript tests**: `cd lambdas/pstn-transfer-ts && npm test`
+- **Shared integration tests**: `cd shared/testdata && npm test`
+
+### Linting
+
+To run all linters (Go and TypeScript) in one command:
+
+```bash
+./scripts/lint-all.sh
+```
+
+This script will:
+- Run Go linting (`gofmt -l` and `go vet` for `lambdas/pstn-transfer-go`)
+- Run TypeScript linting (`npm run lint` in `lambdas/pstn-transfer-ts`)
+
+The script will continue running all linters even if one fails, and report a summary at the end. Exit code 0 indicates all linters passed, exit code 1 indicates at least one linter found issues.
+
+You can also run linters individually:
+- **Go linting**: `gofmt -l ./lambdas/pstn-transfer-go` and `go vet ./lambdas/pstn-transfer-go/...`
+- **TypeScript linting**: `cd lambdas/pstn-transfer-ts && npm run lint`
+- **TypeScript lint with auto-fix**: `cd lambdas/pstn-transfer-ts && npm run lint:fix`
+
+### Formatting
+
+To format all code (Go and TypeScript) in one command:
+
+```bash
+./scripts/format-all.sh
+```
+
+This script will:
+- Format Go code (`gofmt -w` for `lambdas/pstn-transfer-go`)
+- Format TypeScript code (`npm run format` in `lambdas/pstn-transfer-ts`)
+
+The script will continue formatting all code even if one formatter fails, and report a summary at the end. Exit code 0 indicates all code was formatted successfully, exit code 1 indicates at least one formatter failed.
+
+You can also format code individually:
+- **Go formatting**: `gofmt -w ./lambdas/pstn-transfer-go`
+- **TypeScript formatting**: `cd lambdas/pstn-transfer-ts && npm run format`
+- **TypeScript format check (no changes)**: `cd lambdas/pstn-transfer-ts && npm run format:check`
+
+### Shared Integration Tests
+
+- **Location**: [`shared/testdata/`](./shared/testdata/)
+- **README**: [Shared Tests README](./shared/testdata/README.md)
+
+The shared integration tests validate that both Go and TypeScript implementations behave identically by running them against a mock HTTP server. To run the shared tests:
+
+```bash
+cd shared/testdata
+npm install  # First time only
+npm test
+```
+
+These tests can also be run from the TypeScript lambda directory as part of the full test suite.
+
+## Lambda Function Overview
 
 This AWS Lambda function processes Amazon Connect events and interacts with a virtual agent API to handle PSTN transfers and handoff data.
 It provides two main functionalities:
@@ -127,129 +238,35 @@ e.g.
 }
 ```
 
-## Development Setup
+### API Specification
 
-### Prerequisites
-
-- Go 1.x
-- AWS CLI configured with appropriate credentials
-- Visual Studio Code (recommended)
-- ZIP utility
-
-### VS Code Configuration
-
-The project includes VS Code configurations for optimal development:
-
-1. **Required Extensions**:
-   - **dfarley1.file-picker**: Required for the `event` task to select test event files. VS Code should prompt you to install this when opening the workspace. Otherwise you can install vsix in the `.vscode` folder.
-
-2. **Recommended Extensions**:
-   - Install the recommended Go extensions for VS Code
-
-3. **Debugging**:
-   The project includes launch configurations for debugging your Lambda function locally.
-
-4. **Tasks**:
-   Predefined tasks are available for building and testing the application. The `event` task requires the `dfarley1.file-picker` extension to select test event files.
-
-## Deployment
-
-### Environment Configuration
-
-Create a `var.json` file in the project root with your environment variables:
-
-**Recommended (OAuth 2 authentication):**
-```json
-{
-    "virtualAgentName": "your-virtual-agent-resource-name",
-    "region": "us-west-2-prod",
-    "oauthClientId": "your-client-id",
-    "oauthClientSecret": "your-client-secret"
-}
-```
-
-**Deprecated (API Key authentication):**
-```json
-{
-    "virtualAgentName": "your-virtual-agent-resource-name",
-    "region": "us-west-2-prod",
-    "apiDomain": "https://api.us-west-2-prod.cresta.com",
-    "apiKey": "your-api-key"
-}
-```
-
-Note: For prod regions (ending in `-prod`), the API domain uses `.cresta.com`; for staging regions, it uses `.cresta.ai`. This matches the behavior of `BuildAPIDomainFromRegion`.
-
-### Manual Deployment
-
-The project includes a `deploy.sh` script in the `scripts` folder that handles the entire deployment process:
-
-It creates a
-- **IAM Role**: `aws-lambda-connect-pstn-transfer-role`
-  - Includes basic Lambda execution permissions
-- **Lambda Function**: `aws-lambda-connect-pstn-transfer`
-  - Runtime: Amazon Linux 2023 (Custom Runtime)
-  - Architecture: ARM64
-  - Handler: bootstrap
-
-
-```bash
-# Make the script executable and run the deployment
-cd scripts
-chmod +x deploy.sh
-
-PROFILE=<some-aws-profile>
-eval "$(aws configure export-credentials --profile $PROFILE --format env)"
-./deploy.sh
-```
-
-The deployment script will:
-1. Build the Lambda function for Linux ARM64
-2. Create a deployment package (zip)
-3. Create or update the IAM role with necessary permissions
-4. Create or update the Lambda function
-5. Configure environment variables from `var.json`
-
-### CloudFormation Deployment
-
-The project includes a CloudFormation template for infrastructure-as-code deployment. See the [CloudFormation README](./cloudformation/README.md) for detailed instructions.
-
-
-### Local Development
-
-1. Export authentication credentials:
-   - **Recommended**: For OAuth 2: `export oauthClientId=<client-id>` and `export oauthClientSecret=<client-secret>`
-   - **Deprecated**: For API key: `export apiKey=<apiKey>`
-2. Export other required variables: `export region=<region>` (e.g., `us-west-2-prod`). `apiDomain` is deprecated and will be constructed from `region` if not provided.
-3. Export optional variables: `export supportedDtmfChars=<dtmf-chars>` (defaults to `0123456789*` if not provided).
-4. Run the `build and debug` function through VS Code's debugger after making changes
-5. Use the provided test event in `events/test.json` via `cmd + shift P -> Run Task -> event`
-6. Check the debug console for output and response
+An OpenAPI 3.0.0 specification for the used endpoints: `fetchAIAgentHandoff` and `generatePSTNTransferData` is available at [`shared/docs/api-spec.yaml`](./shared/docs/api-spec.yaml). This specification documents the request/response schemas, authentication methods, and error responses for the underlying API endpoints that this Lambda function interacts with.
+Make sure to change the domain to the region-specific domain (e.g., `https://api.us-west-2-prod.cresta.com`) before trying it out.
 
 ## Connect Flow
 
-The following flow is defined in [./docs/VA_PSTN_Transfer.json](./docs/VA_PSTN_Transfer.json)
+The following flow is defined in [./shared/docs/VA_PSTN_Transfer.json](./shared/docs/VA_PSTN_Transfer.json)
 
-![flow](./docs/aws-connect-flow.png)
+![flow](./shared/docs/aws-connect-flow.png)
 
 1. Call comes into Amazon Connect
 2. Amazon Connect calls a lambda function to fetch DTMF sequence and phoneNumber to transfer to
    > - action: `get_pstn_transfer_data`
    > - Response validation is set to JSON
 3. It stores the returned values as attributes on the Current Contact
-    > ![flow](./docs/aws-connect-phonenumber-dtmf.png)
+    > ![flow](./shared/docs/aws-connect-phonenumber-dtmf.png)
 4. It says the DTMF sequence (for debugging purposes)
 5. Amazon Connect transfers the given phone number and enters the DTMF sequence
-    > ![flow](./docs/aws-connect-transfer.png)
+    > ![flow](./shared/docs/aws-connect-transfer.png)
 6. Upon closure of that call, Amazon Connect continues the flow and calls the lambda function to fetch the Handoff which includes the transfer target.
-    > ![flow](./docs/aws-connect-action.png)
+    > ![flow](./shared/docs/aws-connect-action.png)
     > - action: `get_handoff_data`
     > - Response validation is set to JSON
     
     Note: This will make all Handoff response properties (`handoff_transferTarget`, `handoff_summary`, `handoff_conversation` and `handoff_conversationCorrelationId`) available in the 'External' Namespace. Only `handoff_transferTarget` is used in this example flow.
 7.  The transfer target is returned as an attribute
     > `handoff_transferTarget`
-    > ![flow](./docs/aws-connect-target.png)
+    > ![flow](./shared/docs/aws-connect-target.png)
 8.  The target is spoken out loud (for debugging purposes)
 
 > **When importing the flow, make sure to change the reference to the lambda function with your own**

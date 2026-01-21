@@ -39,16 +39,34 @@ Alternatively, you can specify parameters inline:
 
 ```bash
 # Using OAuth 2 authentication (Recommended)
+# For Go implementation (default)
 aws cloudformation create-stack \
   --stack-name my-stack \
   --template-body file://template.yaml \
   --parameters \
+    ParameterKey=LambdaImplementation,ParameterValue=go \
     ParameterKey=OAuthClientId,ParameterValue=your-client-id \
     ParameterKey=OAuthClientSecret,ParameterValue=your-client-secret \
     ParameterKey=VirtualAgentName,ParameterValue=customers/... \
     ParameterKey=Region,ParameterValue=us-west-2-prod \
     ParameterKey=CodeS3Bucket,ParameterValue=my-bucket \
-    ParameterKey=CodeS3Key,ParameterValue=function.zip \
+    ParameterKey=CodeS3Key,ParameterValue=aws-lambda-connect-pstn-transfer.zip \
+    ParameterKey=FunctionName,ParameterValue=aws-lambda-connect-pstn-transfer \
+    ParameterKey=RoleName,ParameterValue=aws-lambda-connect-pstn-transfer-role \
+  --capabilities CAPABILITY_NAMED_IAM
+
+# For TypeScript implementation
+aws cloudformation create-stack \
+  --stack-name my-stack \
+  --template-body file://template.yaml \
+  --parameters \
+    ParameterKey=LambdaImplementation,ParameterValue=typescript \
+    ParameterKey=OAuthClientId,ParameterValue=your-client-id \
+    ParameterKey=OAuthClientSecret,ParameterValue=your-client-secret \
+    ParameterKey=VirtualAgentName,ParameterValue=customers/... \
+    ParameterKey=Region,ParameterValue=us-west-2-prod \
+    ParameterKey=CodeS3Bucket,ParameterValue=my-bucket \
+    ParameterKey=CodeS3Key,ParameterValue=aws-lambda-connect-pstn-transfer-ts.zip \
     ParameterKey=FunctionName,ParameterValue=aws-lambda-connect-pstn-transfer \
     ParameterKey=RoleName,ParameterValue=aws-lambda-connect-pstn-transfer-role \
   --capabilities CAPABILITY_NAMED_IAM
@@ -59,24 +77,29 @@ aws cloudformation create-stack \
 The `deploy-cloudformation.sh` script automates the build, upload, and deployment process:
 
 ```bash
-./cloudformation/deploy-cloudformation.sh
+./infra/cloudformation/deploy-cloudformation.sh
 ```
 
 The script will:
 1. Prompt for all required values:
+   - Lambda implementation type: Go or TypeScript (default: Go)
    - CloudFormation stack name (required)
    - Authentication method: OAuth 2
      - OAuth Client ID and OAuth Client Secret (required)
    - Virtual Agent Name (required)
    - Region (optional, defaults to `us-west-2-prod`)
    - S3 bucket name (required)
-   - S3 key (optional, defaults to `aws-lambda-connect-pstn-transfer.zip`)
+   - S3 key (optional, defaults based on implementation type:
+     - Go: `aws-lambda-connect-pstn-transfer.zip`
+     - TypeScript: `aws-lambda-connect-pstn-transfer-ts.zip`)
    - Lambda function name (optional, defaults to `aws-lambda-connect-pstn-transfer`)
    - IAM role name (optional, defaults to `aws-lambda-connect-pstn-transfer-role`)
-2. Build the Lambda function for Linux ARM64
+2. Build the Lambda function for Linux ARM64 (using the appropriate build script)
 3. Create a deployment package (zip)
 4. Upload the package to S3
 5. Create or update the CloudFormation stack using inline parameters
+
+**Note:** The template uses CloudFormation Conditions to automatically set the correct Runtime, Handler, and default S3 key based on the selected implementation type. Shared parameters (OAuth credentials, Virtual Agent Name, Region) are used for both implementations.
 
 **Note:** The script prompts for all values interactively. For automated deployments or CI/CD pipelines, use `parameters.json` with AWS CLI as shown above.
 

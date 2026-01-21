@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"os"
 	"sync"
 	"time"
 )
@@ -48,9 +50,14 @@ func (tc *TokenCache) SetToken(region, clientID, token string, expiresIn time.Du
 	tc.mu.Lock()
 	defer tc.mu.Unlock()
 	key := cacheKey(region, clientID)
+	// Apply safety buffer but ensure at least some positive cache time
+	safetyBuffer := 5 * time.Minute
+	if expiresIn <= safetyBuffer {
+		safetyBuffer = expiresIn / 2
+	}
 	tc.cache[key] = cacheEntry{
 		token:     token,
-		expiresAt: time.Now().Add(expiresIn - 5*time.Minute), // Subtract 5 minute buffer for safety
+		expiresAt: time.Now().Add(expiresIn - safetyBuffer),
 	}
 }
 
@@ -69,6 +76,7 @@ type OAuth2TokenFetcher interface {
 
 // DefaultOAuth2TokenFetcher implements OAuth2TokenFetcher using HTTP client.
 type DefaultOAuth2TokenFetcher struct {
+	logger   *Logger
 	client   HTTPClient
 	tokenURL func(region string) string
 }
@@ -79,8 +87,23 @@ type DefaultOAuth2TokenFetcher struct {
 func NewOAuth2TokenFetcher() *DefaultOAuth2TokenFetcher {
 	logger := NewLogger()
 	return &DefaultOAuth2TokenFetcher{
+		logger: logger,
 		client: NewRetryHTTPClient(WithLogger(logger)),
 		tokenURL: func(region string) string {
+			// Allow override via environment variable for testing
+			if override := os.Getenv("AUTH_ENDPOINT_OVERRIDE"); override != "" {
+				// Validate override URL to prevent credential exfiltration
+				parsed, err := url.Parse(override)
+				if err != nil {
+					logger.Warnf("invalid AUTH_ENDPOINT_OVERRIDE URL: %v", err)
+					// Fall through to default URL
+				} else if parsed.Scheme != "https" && parsed.Scheme != "http" {
+					logger.Warnf("AUTH_ENDPOINT_OVERRIDE must use http/https scheme, got: %s", parsed.Scheme)
+					// Fall through to default URL
+				} else {
+					return override
+				}
+			}
 			return fmt.Sprintf("https://auth.%s.cresta.ai/v1/oauth/regionalToken", region)
 		},
 	}
@@ -145,6 +168,12 @@ func (f *DefaultOAuth2TokenFetcher) GetToken(ctx context.Context, region, client
 	// Cache the token
 	if tokenResponse.ExpiresIn > 0 {
 		tokenCache.SetToken(region, clientID, tokenResponse.AccessToken, time.Duration(tokenResponse.ExpiresIn)*time.Second)
+	} else {
+		if f.logger != nil {
+			f.logger.Errorf("token response has invalid expires_in (value: %d), token will not be cached", tokenResponse.ExpiresIn)
+		}
+		// Return error since we cannot cache the token and it may expire immediately
+		return "", fmt.Errorf("invalid token response: expires_in is %d (must be > 0)", tokenResponse.ExpiresIn)
 	}
 
 	return tokenResponse.AccessToken, nil

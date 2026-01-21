@@ -172,6 +172,76 @@ func (s *HTTPClientTestSuite) TestRetryHTTPClient_Do_DoesNotRetryOn4xxStatus() {
 	s.Equal("bad request", string(body))
 }
 
+func (s *HTTPClientTestSuite) TestRetryHTTPClient_Do_RetriesOn429Status() {
+	// Given: a retry HTTP client and a server that returns 429 then 200
+	attempts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		if attempts < 2 {
+			w.WriteHeader(http.StatusTooManyRequests)
+			w.Write([]byte("too many requests"))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("success"))
+	}))
+	defer server.Close()
+
+	logger := NewLogger()
+	client := &retryHTTPClient{
+		client:     &http.Client{Timeout: 5 * time.Second},
+		logger:     logger,
+		maxRetries: 2,
+		baseDelay:  10 * time.Millisecond,
+	}
+
+	req, _ := http.NewRequest("GET", server.URL, nil)
+
+	// When: making a request that gets 429 error initially
+	resp, err := client.Do(req)
+
+	// Then: request should retry and eventually succeed
+	s.NoError(err)
+	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.StatusCode)
+	s.Equal(2, attempts) // Should have retried once
+}
+
+func (s *HTTPClientTestSuite) TestRetryHTTPClient_Do_RetriesOn408Status() {
+	// Given: a retry HTTP client and a server that returns 408 then 200
+	attempts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		if attempts < 2 {
+			w.WriteHeader(http.StatusRequestTimeout)
+			w.Write([]byte("request timeout"))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("success"))
+	}))
+	defer server.Close()
+
+	logger := NewLogger()
+	client := &retryHTTPClient{
+		client:     &http.Client{Timeout: 5 * time.Second},
+		logger:     logger,
+		maxRetries: 2,
+		baseDelay:  10 * time.Millisecond,
+	}
+
+	req, _ := http.NewRequest("GET", server.URL, nil)
+
+	// When: making a request that gets 408 error initially
+	resp, err := client.Do(req)
+
+	// Then: request should retry and eventually succeed
+	s.NoError(err)
+	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.StatusCode)
+	s.Equal(2, attempts) // Should have retried once
+}
+
 func (s *HTTPClientTestSuite) TestRetryHTTPClient_Do_ExhaustsRetries() {
 	// Given: a retry HTTP client with maxRetries=2 and a server that always returns 500
 	attempts := 0
@@ -307,6 +377,18 @@ func (s *HTTPClientTestSuite) TestIsRetryableError() {
 			err:        nil,
 			statusCode: 200,
 			want:       false,
+		},
+		{
+			name:       "Given: 429 status code, When: checking retryability, Then: should be retryable",
+			err:        nil,
+			statusCode: 429,
+			want:       true,
+		},
+		{
+			name:       "Given: 408 status code, When: checking retryability, Then: should be retryable",
+			err:        nil,
+			statusCode: 408,
+			want:       true,
 		},
 	}
 
