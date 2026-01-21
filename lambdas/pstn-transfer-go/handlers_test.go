@@ -5,14 +5,48 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/stretchr/testify/suite"
 )
 
+// readVersionFromFile reads the VERSION file from the project root
+func readVersionFromFile() string {
+	// Get the current test file directory
+	_, filename, _, _ := runtime.Caller(0)
+	testDir := filepath.Dir(filename)
+	// Navigate to project root: lambdas/pstn-transfer-go -> lambdas -> project root
+	projectRoot := filepath.Join(testDir, "..", "..")
+	versionPath := filepath.Join(projectRoot, "VERSION")
+	versionBytes, err := os.ReadFile(versionPath)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(versionBytes))
+}
+
 type HandlersTestSuite struct {
 	suite.Suite
+	originalVersion string
+}
+
+func (s *HandlersTestSuite) SetupTest() {
+	// Set Version to match VERSION file for tests (since ldflags aren't used in test builds)
+	s.originalVersion = Version
+	Version = readVersionFromFile()
+	if Version == "" {
+		Version = "unknown"
+	}
+}
+
+func (s *HandlersTestSuite) TearDownTest() {
+	// Restore original version
+	Version = s.originalVersion
 }
 
 func TestHandlersTestSuite(t *testing.T) {
@@ -103,6 +137,13 @@ func (s *HandlersTestSuite) TestGetPSTNTransferData() {
 				s.False(ok, "apiKey should be filtered out")
 				_, ok = parameters["region"]
 				s.False(ok, "region should be filtered out")
+
+				// Verify version is present in ccaasMetadata and matches VERSION file
+				version, ok := ccaasMetadata["version"].(string)
+				s.True(ok, "expected version in ccaasMetadata")
+				s.NotEmpty(version, "version should not be empty")
+				expectedVersion := readVersionFromFile()
+				s.Equal(expectedVersion, version, "version should match VERSION file")
 
 				w.WriteHeader(tt.mockStatusCode)
 				tt.mockResponse(w)

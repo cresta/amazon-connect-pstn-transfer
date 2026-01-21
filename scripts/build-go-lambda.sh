@@ -20,10 +20,18 @@ trap "rm -rf $BUILD_DIR" EXIT
 echo "=== Building Go Lambda Function ==="
 echo ""
 
+# Read version from VERSION file
+VERSION=$(cat "$PROJECT_ROOT/VERSION" | tr -d '[:space:]')
+if [ -z "$VERSION" ]; then
+    echo "Error: VERSION file is empty or not found"
+    exit 1
+fi
+
 # Build the Lambda function
 # Using provided.al2023 runtime with bootstrap handler
-echo "Building for Linux ARM64..."
-GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o "$BUILD_DIR/bootstrap" "./$LAMBDA_DIR"
+# Inject version via ldflags
+echo "Building for Linux ARM64 with version $VERSION..."
+GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -ldflags "-X main.Version=$VERSION" -o "$BUILD_DIR/bootstrap" "./$LAMBDA_DIR"
 
 if [ ! -f "$BUILD_DIR/bootstrap" ]; then
     echo "Error: Build failed - bootstrap executable not found"

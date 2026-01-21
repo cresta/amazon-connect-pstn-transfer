@@ -2,6 +2,20 @@
  * Tests for handlers matching Go test structure
  */
 
+import { readFileSync } from "fs";
+import { join } from "path";
+
+// Read version from VERSION file for test verification
+// Path from lambdas/pstn-transfer-ts/src/handlers.test.ts to project root VERSION file
+const VERSION_FILE_PATH = join(__dirname, "../../../VERSION");
+const EXPECTED_VERSION = readFileSync(VERSION_FILE_PATH, "utf-8").trim();
+
+// Mock the version module to return the expected version from VERSION file
+// This must be done before importing Handlers which imports version
+jest.mock("./version.js", () => ({
+	VERSION: EXPECTED_VERSION,
+}));
+
 import type { CrestaAPIClient } from "./client.js";
 import { Handlers } from "./handlers.js";
 import { Logger } from "./logger.js";
@@ -78,6 +92,7 @@ describe("Handlers", () => {
 						parameters: expect.objectContaining({
 							customParam: "customValue",
 						}),
+						version: expect.any(String),
 					}),
 				}),
 			);
@@ -87,10 +102,15 @@ describe("Handlers", () => {
 			const payload = callArgs[3] as {
 				ccaasMetadata: {
 					parameters: Record<string, unknown>;
+					version: string;
 				};
 			};
 			expect(payload.ccaasMetadata.parameters.apiKey).toBeUndefined();
 			expect(payload.ccaasMetadata.parameters.region).toBeUndefined();
+			// Verify version is present and matches VERSION file
+			expect(payload.ccaasMetadata.version).toBeDefined();
+			expect(typeof payload.ccaasMetadata.version).toBe("string");
+			expect(payload.ccaasMetadata.version).toBe(EXPECTED_VERSION);
 		});
 
 		it("should handle error response from server", async () => {

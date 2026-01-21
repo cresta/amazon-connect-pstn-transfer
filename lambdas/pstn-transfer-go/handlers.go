@@ -73,6 +73,12 @@ func (h *Handlers) GetPSTNTransferData(ctx context.Context) (*events.ConnectResp
 		ccaasMetadata[k] = v
 	}
 	ccaasMetadata["parameters"] = filteredParameters
+	// Add version (with fallback if not set at build time)
+	version := Version
+	if version == "" {
+		version = "unknown"
+	}
+	ccaasMetadata["version"] = version
 
 	payload := map[string]any{
 		"callId":             h.event.Details.ContactData.ContactID,
