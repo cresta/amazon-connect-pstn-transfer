@@ -24,10 +24,10 @@ jobs:
 
       - name: Verify Go build
         run: |
-          test -f bootstrap || (echo "bootstrap not found" && exit 1)
-          file bootstrap
           test -f aws-lambda-connect-pstn-transfer-go.zip || (echo "zip file not found" && exit 1)
           ls -lh aws-lambda-connect-pstn-transfer-go.zip
+          # Verify the zip contains bootstrap
+          unzip -l aws-lambda-connect-pstn-transfer-go.zip | grep -q bootstrap || (echo "bootstrap not found in zip" && exit 1)
 
       - name: Upload Go artifact
         uses: actions/upload-artifact@v4
