@@ -222,9 +222,9 @@ The project includes a CloudFormation template for infrastructure-as-code deploy
    - **Deprecated**: For API key: `export apiKey=<apiKey>`
 2. Export other required variables: `export region=<region>` (e.g., `us-west-2-prod`). `apiDomain` is deprecated and will be constructed from `region` if not provided.
 3. Export optional variables: `export supportedDtmfChars=<dtmf-chars>` (defaults to `0123456789*` if not provided).
-3. Run the `build and debug` function through VS Code's debugger after making changes
-4. Use the provided test event in `events/test.json` via `cmd + shift P -> Run Task -> event`
-5. Check the debug console for output and response
+4. Run the `build and debug` function through VS Code's debugger after making changes
+5. Use the provided test event in `events/test.json` via `cmd + shift P -> Run Task -> event`
+6. Check the debug console for output and response
 
 ## Connect Flow
 

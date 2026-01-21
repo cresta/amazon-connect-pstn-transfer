@@ -199,7 +199,8 @@ type AuthConfig struct {
 }
 
 // getAuthHeader returns the appropriate Authorization header based on AuthConfig.
-// Returns empty string if authConfig is nil (auth not configured).
+// Returns an error if authConfig is nil or if authentication is not properly configured.
+// Otherwise returns the Authorization header value (e.g., "Bearer <token>" for OAuth 2 or "ApiKey <key>" for API key).
 func (c *retryHTTPClient) getAuthHeader(ctx context.Context) (string, error) {
 	if c.authConfig == nil {
 		return "", fmt.Errorf("authConfig is required")
