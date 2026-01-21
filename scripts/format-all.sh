@@ -41,14 +41,21 @@ echo ""
 echo "--- Formatting TypeScript Code ---"
 if [ -d "lambdas/pstn-transfer-ts" ]; then
     if command -v npm &> /dev/null; then
-        cd lambdas/pstn-transfer-ts
-        if npm run format; then
-            echo "✓ TypeScript code formatted"
-        else
-            echo "✗ TypeScript formatting failed"
+        if ! cd lambdas/pstn-transfer-ts; then
+            echo "✗ Failed to enter lambdas/pstn-transfer-ts directory"
             FORMAT_FAILED=1
+        else
+            if npm run format; then
+                echo "✓ TypeScript code formatted"
+            else
+                echo "✗ TypeScript formatting failed"
+                FORMAT_FAILED=1
+            fi
+            if ! cd "$PROJECT_ROOT"; then
+                echo "✗ Failed to return to PROJECT_ROOT"
+                exit 1
+            fi
         fi
-        cd "$PROJECT_ROOT"
     else
         echo "⚠ npm not found, skipping TypeScript formatting"
     fi

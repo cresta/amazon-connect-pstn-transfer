@@ -56,14 +56,21 @@ echo ""
 echo "--- Running TypeScript Linter ---"
 if [ -d "lambdas/pstn-transfer-ts" ]; then
     if command -v npm &> /dev/null; then
-        cd lambdas/pstn-transfer-ts
-        if npm run lint; then
-            echo "✓ TypeScript linting passed"
-        else
-            echo "✗ TypeScript linting failed"
+        if ! cd lambdas/pstn-transfer-ts; then
+            echo "✗ Failed to enter lambdas/pstn-transfer-ts directory"
             LINT_FAILED=1
+        else
+            if npm run lint; then
+                echo "✓ TypeScript linting passed"
+            else
+                echo "✗ TypeScript linting failed"
+                LINT_FAILED=1
+            fi
+            if ! cd "$PROJECT_ROOT"; then
+                echo "✗ Failed to return to PROJECT_ROOT"
+                exit 1
+            fi
         fi
-        cd "$PROJECT_ROOT"
     else
         echo "⚠ npm not found, skipping TypeScript linting"
     fi

@@ -41,14 +41,21 @@ echo ""
 echo "--- Running TypeScript Tests ---"
 if [ -d "lambdas/pstn-transfer-ts" ]; then
     if command -v npm &> /dev/null; then
-        cd lambdas/pstn-transfer-ts
-        if npm test; then
-            echo "✓ TypeScript tests passed"
-        else
-            echo "✗ TypeScript tests failed"
+        if ! cd lambdas/pstn-transfer-ts; then
+            echo "✗ Failed to enter lambdas/pstn-transfer-ts directory"
             TESTS_FAILED=1
+        else
+            if npm test; then
+                echo "✓ TypeScript tests passed"
+            else
+                echo "✗ TypeScript tests failed"
+                TESTS_FAILED=1
+            fi
+            if ! cd "$PROJECT_ROOT"; then
+                echo "✗ Failed to return to PROJECT_ROOT"
+                exit 1
+            fi
         fi
-        cd "$PROJECT_ROOT"
     else
         echo "⚠ npm not found, skipping TypeScript tests"
     fi
@@ -61,14 +68,21 @@ echo ""
 echo "--- Running Shared Integration Tests ---"
 if [ -d "shared/testdata" ]; then
     if command -v npm &> /dev/null; then
-        cd shared/testdata
-        if npm test; then
-            echo "✓ Shared integration tests passed"
-        else
-            echo "✗ Shared integration tests failed"
+        if ! cd shared/testdata; then
+            echo "✗ Failed to enter shared/testdata directory"
             TESTS_FAILED=1
+        else
+            if npm test; then
+                echo "✓ Shared integration tests passed"
+            else
+                echo "✗ Shared integration tests failed"
+                TESTS_FAILED=1
+            fi
+            if ! cd "$PROJECT_ROOT"; then
+                echo "✗ Failed to return to PROJECT_ROOT"
+                exit 1
+            fi
         fi
-        cd "$PROJECT_ROOT"
     else
         echo "⚠ npm not found, skipping shared integration tests"
     fi

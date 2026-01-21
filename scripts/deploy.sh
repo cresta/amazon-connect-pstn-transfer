@@ -186,7 +186,10 @@ echo "  Architecture: $ARCHITECTURE"
 echo ""
 
 # Build the zip using the appropriate build script
-"$SCRIPT_DIR/$BUILD_SCRIPT"
+if ! "$SCRIPT_DIR/$BUILD_SCRIPT"; then
+    echo "Error: Build script failed: $BUILD_SCRIPT (exit code: $?)"
+    exit 1
+fi
 
 # Get the account ID
 account_id=$(aws sts get-caller-identity --query "Account" --output text)
