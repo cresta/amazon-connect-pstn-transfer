@@ -13,25 +13,6 @@ This Go implementation provides the same functionality as the TypeScript impleme
 ### Prerequisites
 
 - Go 1.22+
-- AWS CLI configured with appropriate credentials
-- Visual Studio Code (recommended)
-- ZIP utility
-
-### VS Code Configuration
-
-The project includes VS Code configurations for optimal development:
-
-1. **Required Extensions**:
-   - **dfarley1.file-picker**: Required for the `event` task to select test event files. VS Code should prompt you to install this when opening the workspace. Otherwise you can install vsix in the `.vscode` folder.
-
-2. **Recommended Extensions**:
-   - Install the recommended Go extensions for VS Code
-
-3. **Debugging**:
-   The project includes launch configurations for debugging your Lambda function locally.
-
-4. **Tasks**:
-   Predefined tasks are available for building and testing the application. The `event` task requires the `dfarley1.file-picker` extension to select test event files.
 
 ### Building
 
@@ -41,7 +22,7 @@ Build the Lambda function for Linux ARM64:
 ./scripts/build-go-lambda.sh
 ```
 
-This creates `aws-lambda-connect-pstn-transfer.zip` in the project root.
+This creates `aws-lambda-connect-pstn-transfer-go.zip` in the project root.
 
 ### Testing
 
@@ -52,9 +33,8 @@ go test ./...
 ### Local Development
 
 1. Export authentication credentials:
-   - **Recommended**: For OAuth 2: `export oauthClientId=<client-id>` and `export oauthClientSecret=<client-secret>`
-   - **Deprecated**: For API key: `export apiKey=<apiKey>`
-2. Export other required variables: `export region=<region>` (e.g., `us-west-2-prod`). `apiDomain` is deprecated and will be constructed from `region` if not provided.
+   - `export oauthClientId=<client-id>` and `export oauthClientSecret=<client-secret>`
+2. Export other required variables: `export region=<region>` (e.g., `us-west-2-prod`)
 3. Export optional variables: `export supportedDtmfChars=<dtmf-chars>` (defaults to `0123456789*` if not provided).
 4. Run the `build and debug` function through VS Code's debugger after making changes
 5. Use the provided test event in `shared/testdata/` via `cmd + shift P -> Run Task -> event`
@@ -62,33 +42,7 @@ go test ./...
 
 ## Deployment
 
-### Environment Configuration
-
-Create a `var.json` file in the project root with your environment variables:
-
-**Recommended (OAuth 2 authentication):**
-```json
-{
-    "virtualAgentName": "your-virtual-agent-resource-name",
-    "region": "us-west-2-prod",
-    "oauthClientId": "your-client-id",
-    "oauthClientSecret": "your-client-secret"
-}
-```
-
-**Deprecated (API Key authentication):**
-```json
-{
-    "virtualAgentName": "your-virtual-agent-resource-name",
-    "region": "us-west-2-prod",
-    "apiDomain": "https://api.us-west-2-prod.cresta.com",
-    "apiKey": "your-api-key"
-}
-```
-
-Note: For prod regions (ending in `-prod`), the API domain uses `.cresta.com`; for staging regions, it uses `.cresta.ai`. This matches the behavior of `BuildAPIDomainFromRegion`.
-
-### Manual Deployment
+### Script Deployment
 
 The project includes a `deploy.sh` script in the `scripts` folder that handles the entire deployment process:
 
@@ -99,6 +53,8 @@ It creates a
   - Runtime: Amazon Linux 2023 (Custom Runtime)
   - Architecture: ARM64
   - Handler: bootstrap
+
+> **Note**: The `deploy.sh` script will automatically create a `var.json` file in the project root with your environment variables (OAuth credentials, virtual agent name, and region) when you run it for the first time.
 
 ```bash
 # Make the script executable and run the deployment
@@ -111,15 +67,101 @@ eval "$(aws configure export-credentials --profile $PROFILE --format env)"
 ```
 
 The deployment script will:
-1. Build the Lambda function for Linux ARM64
-2. Create a deployment package (zip)
-3. Create or update the IAM role with necessary permissions
-4. Create or update the Lambda function
-5. Configure environment variables from `var.json`
+1. Prompt for environment variables and create `var.json` (if it doesn't exist)
+2. Build the Lambda function for Linux ARM64
+3. Create a deployment package (zip)
+4. Create or update the IAM role with necessary permissions
+5. Create or update the Lambda function
+6. Configure environment variables from `var.json`
 
 ### CloudFormation Deployment
 
 The project includes a CloudFormation template for infrastructure-as-code deployment. See the [CloudFormation README](../../infra/cloudformation/README.md) for detailed instructions.
+
+### Manual Deployment via AWS Portal
+
+You can also deploy the Lambda function manually through the AWS Console. Follow these steps:
+
+#### Prerequisites
+
+1. Build the Lambda function (or download from [GitHub Releases](https://github.com/cresta/amazon-connect-pstn-transfer/releases)):
+   ```bash
+   ./scripts/build-go-lambda.sh
+   ```
+   This creates `aws-lambda-connect-pstn-transfer-go.zip` in the project root.
+
+2. (optional) Upload the deployment package to an S3 bucket
+   ```bash
+   aws s3 cp aws-lambda-connect-pstn-transfer-go.zip s3://your-bucket-name/
+   ```
+
+#### Step-by-Step Deployment
+
+1. **Navigate to AWS Lambda Console**
+   - Go to AWS Console → Lambda → Functions
+   - Click "Create function"
+
+2. **Configure Function**
+   - **Function name**: `aws-lambda-connect-pstn-transfer`
+   - **Runtime**: Select "Custom runtime on Amazon Linux 2023" (`provided.al2023`)
+   - **Architecture**: Select `ARM64`
+   - Click "Create function"
+
+3. **Upload Code**
+   - In the "Code" tab, choose one of:
+     - **Option A**: Upload a .zip file directly (for smaller packages)
+       - Click "Upload from" → ".zip file"
+       - Select `aws-lambda-connect-pstn-transfer-go.zip`
+     - **Option B**: Upload from S3 (recommended for larger packages)
+       - Click "Upload from" → "Amazon S3 location"
+       - Enter the S3 URL: `s3://your-bucket-name/aws-lambda-connect-pstn-transfer-go.zip`
+   - Click "Save"
+
+4. **Configure Handler**
+   - In the "Code" tab, scroll to "Runtime settings"
+   - **Handler**: `bootstrap` (this is the executable name for Go Lambda custom runtime)
+   - Click "Edit" to modify, then "Save"
+
+5. **Configure Function Settings**
+   - Go to the "Configuration" tab → "General configuration"
+   - Click "Edit" and configure:
+     - **Timeout**: `30 seconds`
+     - **Memory**: `256 MB`
+   - Click "Save"
+
+6. **Set Environment Variables**
+   - Go to "Configuration" → "Environment variables"
+   - Click "Edit" → "Add environment variable" for each:
+     - `oauthClientId`: Your OAuth 2 Client ID
+     - `oauthClientSecret`: Your OAuth 2 Client Secret (mark as "Encrypt" for security)
+     - `region`: Your AWS region (e.g., `us-west-2-prod`)
+     - `virtualAgentName`: Resource name in format `customers/{customer}/profiles/{profile}/virtualAgents/{virtualAgentID}`
+   - Click "Save"
+
+7. **Configure IAM Role**
+   - Go to "Configuration" → "Permissions"
+   - Click on the role name to open IAM Console
+   - Ensure the role has the `AWSLambdaBasicExecutionRole` managed policy attached
+   - This allows the Lambda to write logs to CloudWatch
+
+8. **Test the Function**
+   - Go to the "Test" tab
+   - Create a test event or use an existing one from the `shared/testdata` folder.
+      - e.g. `test_get_handoff_data.json`
+   - Run the test to verify the function works correctly
+
+#### Architecture and Configuration Details
+
+- **Runtime**: `provided.al2023` (Amazon Linux 2023 Custom Runtime)
+  - This runtime is used for Go Lambda functions compiled as a single binary
+- **Handler**: `bootstrap`
+  - For Go Lambda custom runtime, the handler is always `bootstrap`, which is the name of the compiled executable
+- **Architecture**: `ARM64`
+  - The Lambda is compiled for ARM64 architecture for better cost efficiency
+- **Timeout**: `30 seconds`
+  - Maximum execution time for the function. Actual execution should take a lot less.
+- **Memory**: `256 MB`
+  - Memory allocation affects CPU power proportionally.
 
 ## Structure
 
@@ -139,7 +181,7 @@ The test suite validates:
 - Successful requests for both actions
 - Error handling
 - Parameter filtering
-- Authentication (API key and OAuth 2)
+- Authentication (OAuth 2)
 - Response transformation
 
 Tests use the standard Go testing package and can be run with `go test ./...`.
