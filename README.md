@@ -40,6 +40,20 @@ Both implementations provide identical functionality and can be used interchange
 
 For implementation-specific details, development setup, and deployment instructions, please refer to the respective README files linked above.
 
+### Version Management
+
+The project uses a shared `VERSION` file at the project root for version management across all implementations. This version is:
+
+- **Injected at build time** into both Go and TypeScript implementations
+- **Included in `ccaasMetadata`** sent to the backend API for logging and tracking
+- **Single source of truth** - update the `VERSION` file to change the version for all implementations
+
+The version is automatically read from the `VERSION` file during the build process:
+- **Go**: Injected via `-ldflags` during compilation
+- **TypeScript**: Injected via esbuild `--define` flag during bundling
+
+To update the version, simply edit the `VERSION` file at the project root.
+
 ### Build Scripts
 
 The `scripts/` directory contains build scripts for both implementations:

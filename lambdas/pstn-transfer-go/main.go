@@ -10,6 +10,9 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
+// Version is set at build time via ldflags
+var Version string
+
 // HandlerService contains dependencies for the Lambda handler.
 type HandlerService struct {
 	logger       *Logger

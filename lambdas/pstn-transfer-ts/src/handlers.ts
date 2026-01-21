@@ -6,6 +6,7 @@ import type { CrestaAPIClient } from "./client.js";
 import type { Logger } from "./logger.js";
 import type { ConnectEvent, ConnectResponse, FetchAIAgentHandoffResponse } from "./types.js";
 import { copyMap } from "./utils.js";
+import { VERSION } from "./version.js";
 
 const FilteredKeys: Record<string, boolean> = {
 	apiDomain: true,
@@ -58,6 +59,7 @@ export class Handlers {
 		const ccaasMetadata: Record<string, unknown> = {
 			...this.event.Details.ContactData,
 			parameters: filteredParameters,
+			version: VERSION,
 		};
 
 		const payload = {
