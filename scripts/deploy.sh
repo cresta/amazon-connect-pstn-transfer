@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Change to project root directory (parent of scripts directory)
+cd "$(dirname "$0")/.." || exit 1
+
 # Function to extract JSON value
 extract_json_value() {
     local key=$1
@@ -20,20 +23,22 @@ if [ -f "var.json" ]; then
     echo ""
     
     # Extract values from var.json
-    api_key=$(extract_json_value "apiKey" "var.json")
+    oauth_client_id=$(extract_json_value "oauthClientId" "var.json")
+    oauth_client_secret=$(extract_json_value "oauthClientSecret" "var.json")
     virtual_agent_name=$(extract_json_value "virtualAgentName" "var.json")
-    api_domain=$(extract_json_value "apiDomain" "var.json")
+    region=$(extract_json_value "region" "var.json")
     
-    # Set default if apiDomain is empty
-    if [ -z "$api_domain" ]; then
-        api_domain="https://api.us-west-2-prod.cresta.com"
+    # Set default if region is empty
+    if [ -z "$region" ]; then
+        region="us-west-2-prod"
     fi
     
     # Display current values
     echo "Current configuration:"
-    echo "  API Key: ${api_key:0:10}..." # Show only first 10 chars for security
+    echo "  OAuth Client ID: ${oauth_client_id:0:10}..." # Show only first 10 chars for security
+    echo "  OAuth Client Secret: ${oauth_client_secret:0:10}..." # Show only first 10 chars for security
     echo "  Virtual Agent Name: $virtual_agent_name"
-    echo "  API Domain: $api_domain"
+    echo "  Region: $region"
     echo ""
     
     # Ask for confirmation
@@ -41,9 +46,16 @@ if [ -f "var.json" ]; then
     if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
         echo ""
         # Prompt for new values
-        read -p "Enter API Key (required): " api_key
-        if [ -z "$api_key" ]; then
-            echo "Error: API Key is required"
+        read -p "Enter OAuth Client ID (required): " oauth_client_id
+        if [ -z "$oauth_client_id" ]; then
+            echo "Error: OAuth Client ID is required"
+            exit 1
+        fi
+        
+        read -sp "Enter OAuth Client Secret (required): " oauth_client_secret
+        echo ""
+        if [ -z "$oauth_client_secret" ]; then
+            echo "Error: OAuth Client Secret is required"
             exit 1
         fi
         
@@ -53,16 +65,23 @@ if [ -f "var.json" ]; then
             exit 1
         fi
         
-        read -p "Enter API Domain (optional, default: https://api.us-west-2-prod.cresta.com): " api_domain
-        if [ -z "$api_domain" ]; then
-            api_domain="https://api.us-west-2-prod.cresta.com"
+        read -p "Enter Region (optional, default: us-west-2-prod): " region
+        if [ -z "$region" ]; then
+            region="us-west-2-prod"
         fi
     fi
 else
     # Prompt for values if var.json doesn't exist
-    read -p "Enter API Key (required): " api_key
-    if [ -z "$api_key" ]; then
-        echo "Error: API Key is required"
+    read -p "Enter OAuth Client ID (required): " oauth_client_id
+    if [ -z "$oauth_client_id" ]; then
+        echo "Error: OAuth Client ID is required"
+        exit 1
+    fi
+    
+    read -sp "Enter OAuth Client Secret (required): " oauth_client_secret
+    echo ""
+    if [ -z "$oauth_client_secret" ]; then
+        echo "Error: OAuth Client Secret is required"
         exit 1
     fi
     
@@ -72,15 +91,20 @@ else
         exit 1
     fi
     
-    read -p "Enter API Domain (optional, default: https://api.us-west-2-prod.cresta.com): " api_domain
-    if [ -z "$api_domain" ]; then
-        api_domain="https://api.us-west-2-prod.cresta.com"
+    read -p "Enter Region (optional, default: us-west-2-prod): " region
+    if [ -z "$region" ]; then
+        region="us-west-2-prod"
     fi
 fi
 
 # Validate required fields
-if [ -z "$api_key" ]; then
-    echo "Error: API Key is required"
+if [ -z "$oauth_client_id" ]; then
+    echo "Error: OAuth Client ID is required"
+    exit 1
+fi
+
+if [ -z "$oauth_client_secret" ]; then
+    echo "Error: OAuth Client Secret is required"
     exit 1
 fi
 
@@ -92,20 +116,23 @@ fi
 # Create or update var.json file
 if command -v jq &> /dev/null; then
     jq -n \
-        --arg apiKey "$api_key" \
+        --arg oauthClientId "$oauth_client_id" \
+        --arg oauthClientSecret "$oauth_client_secret" \
         --arg virtualAgentName "$virtual_agent_name" \
-        --arg apiDomain "$api_domain" \
-        '{apiKey: $apiKey, virtualAgentName: $virtualAgentName, apiDomain: $apiDomain}' > var.json
+        --arg region "$region" \
+        '{oauthClientId: $oauthClientId, oauthClientSecret: $oauthClientSecret, virtualAgentName: $virtualAgentName, region: $region}' > var.json
 else
     # Fallback to manual JSON creation (basic escaping)
-    api_key_escaped=$(echo "$api_key" | sed 's/"/\\"/g')
+    oauth_client_id_escaped=$(echo "$oauth_client_id" | sed 's/"/\\"/g')
+    oauth_client_secret_escaped=$(echo "$oauth_client_secret" | sed 's/"/\\"/g')
     virtual_agent_name_escaped=$(echo "$virtual_agent_name" | sed 's/"/\\"/g')
-    api_domain_escaped=$(echo "$api_domain" | sed 's/"/\\"/g')
+    region_escaped=$(echo "$region" | sed 's/"/\\"/g')
     cat > var.json <<EOF
 {
-    "apiKey": "$api_key_escaped",
+    "oauthClientId": "$oauth_client_id_escaped",
+    "oauthClientSecret": "$oauth_client_secret_escaped",
     "virtualAgentName": "$virtual_agent_name_escaped",
-    "apiDomain": "$api_domain_escaped"
+    "region": "$region_escaped"
 }
 EOF
 fi
@@ -115,7 +142,7 @@ echo "Configuration saved to var.json"
 echo ""
 
 # Build the zip
-GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o bootstrap main.go && zip -j aws-lambda-connect-pstn-transfer.zip bootstrap
+GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o bootstrap . && zip -j aws-lambda-connect-pstn-transfer.zip bootstrap
 
 # Get the account ID
 account_id=$(aws sts get-caller-identity --query "Account" --output text)

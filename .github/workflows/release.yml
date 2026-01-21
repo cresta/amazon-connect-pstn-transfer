@@ -19,7 +19,7 @@ jobs:
 
       - name: Build Lambda function
         run: |
-          GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o bootstrap main.go
+          GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o bootstrap .
           zip -j aws-lambda-connect-pstn-transfer.zip bootstrap
 
       - name: Verify build

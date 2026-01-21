@@ -1,173 +1,141 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
-	"slices"
-	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
-// FetchAIAgentHandoff API response.
-type FetchAIAgentHandoffResponse struct {
-	Handoff Handoff `json:"handoff"`
+// HandlerService contains dependencies for the Lambda handler.
+type HandlerService struct {
+	logger       *Logger
+	tokenFetcher OAuth2TokenFetcher
 }
 
-type Handoff struct {
-	Conversation              string `json:"conversation"`
-	ConversationCorrelationID string `json:"conversationCorrelationId"`
-	Summary                   string `json:"summary"`
-	TransferTarget            string `json:"transferTarget"`
-	// NOTE: We don't need the metadataByTaxonomy field.
-}
-
-func makeHTTPRequest(ctx context.Context, method, url string, apiKey string, payload any) ([]byte, error) {
-	jsonData, err := json.Marshal(payload)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling payload: %v", err)
+// NewHandlerService creates a new HandlerService with default dependencies.
+func NewHandlerService() *HandlerService {
+	logger := NewLogger()
+	return &HandlerService{
+		logger:       logger,
+		tokenFetcher: NewOAuth2TokenFetcher(),
 	}
-	fmt.Printf("Sending request to %s with payload: %s\n", url, string(jsonData))
-
-	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(jsonData))
-	if err != nil {
-		return nil, fmt.Errorf("error creating request: %v", err)
-	}
-	req.Header.Set("Authorization", fmt.Sprintf("ApiKey %s", apiKey))
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("error making HTTP request: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("request returned non-200 status: %d, body: %s", resp.StatusCode, string(body))
-	}
-
-	return io.ReadAll(resp.Body)
-}
-
-func getPSTNTransferData(ctx context.Context, apiKey, domain, virtualAgentName string, details *events.ConnectDetails) (*events.ConnectResponse, error) {
-	url := fmt.Sprintf("%s/v1/%s:generatePSTNTransferData", domain, virtualAgentName)
-
-	// Filter out apiDomain, action, apiKey, and virtualAgentName from parameters
-	filteredKeys := []string{"apiDomain", "action", "apiKey", "virtualAgentName"}
-	filteredParameters := copyMap(details.Parameters, filteredKeys)
-
-	eventDataJSON, err := json.Marshal(details.ContactData)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling ContactData: %v", err)
-	}
-	var eventDataMap map[string]any
-	if err := json.Unmarshal(eventDataJSON, &eventDataMap); err != nil {
-		return nil, fmt.Errorf("error unmarshalling ContactData: %v", err)
-	}
-
-	// Merge ContactData with parameters as a sub-field of ccaasMetadata
-	ccaasMetadata := make(map[string]any)
-	for k, v := range eventDataMap {
-		ccaasMetadata[k] = v
-	}
-	ccaasMetadata["parameters"] = filteredParameters
-
-	payload := map[string]any{
-		"callId":             details.ContactData.ContactID,
-		"ccaasMetadata":      ccaasMetadata,
-		"supportedDtmfChars": "0123456789*",
-	}
-
-	fmt.Printf("Making request to %s with payload: %+v\n", url, payload)
-
-	body, err := makeHTTPRequest(ctx, "POST", url, apiKey, payload)
-	if err != nil {
-		return nil, err
-	}
-
-	var result *events.ConnectResponse
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("error parsing response JSON: %v", err)
-	}
-
-	fmt.Printf("Received response: %+v\n", result)
-	return result, nil
-}
-
-func parseVirtualAgentName(virtualAgentName string) (customer string, profile string, virtualAgentID string, err error) {
-	// virtualAgentFormat is the format of the virtual agent ID
-	// customers/{customer}/profiles/{profile}/virtualAgents/{virtualAgentID}
-	parts := strings.Split(virtualAgentName, "/")
-	if len(parts) != 6 {
-		return "", "", "", fmt.Errorf("invalid virtual agent name: %s", virtualAgentName)
-	}
-	return parts[1], parts[3], parts[5], nil
-}
-
-func getHandoffData(ctx context.Context, apiKey, domain, customer, profile string, eventData *events.ConnectContactData) (*events.ConnectResponse, error) {
-	url := fmt.Sprintf("%s/v1/customers/%s/profiles/%s/handoffs:fetchAIAgentHandoff", domain, customer, profile)
-	payload := map[string]any{
-		"correlationId": eventData.ContactID,
-	}
-
-	fmt.Printf("Making request to %s with payload: %+v\n", url, payload)
-
-	body, err := makeHTTPRequest(ctx, "POST", url, apiKey, payload)
-	if err != nil {
-		return nil, err
-	}
-
-	var result *FetchAIAgentHandoffResponse
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("error marshalling response body: %v", err)
-	}
-	fmt.Printf("Received response: %+v\n", result)
-
-	return &events.ConnectResponse{
-		"handoff_conversation":              result.Handoff.Conversation,
-		"handoff_conversationCorrelationId": result.Handoff.ConversationCorrelationID,
-		"handoff_summary":                   result.Handoff.Summary,
-		"handoff_transferTarget":            result.Handoff.TransferTarget,
-	}, nil
 }
 
 func handler(ctx context.Context, event events.ConnectEvent) (events.ConnectResponse, error) {
-	fmt.Printf("Received event: %+v\n", event)
+	return NewHandlerService().Handle(ctx, event)
+}
+
+// Handle processes the Lambda event and returns a response.
+func (s *HandlerService) Handle(ctx context.Context, event events.ConnectEvent) (events.ConnectResponse, error) {
+	s.logger.Debugf("Received event: %+v", event)
 
 	var result *events.ConnectResponse
 	var err error
 
-	domain := getFromEventParameterOrEnv(event, "apiDomain", "https://api.us-west-2-prod.cresta.com")
-	action := getFromEventParameterOrEnv(event, "action", "")
-	apiKey := getFromEventParameterOrEnv(event, "apiKey", "")
-	if apiKey == "" {
-		return nil, fmt.Errorf("apiKey is required")
+	// Extract region first - from region parameter or apiDomain (deprecated)
+	regionParam := GetFromEventParameterOrEnv(event, "region", "")
+	apiDomainParam := GetFromEventParameterOrEnv(event, "apiDomain", "") // Deprecated: use region instead
+
+	var region string
+	if regionParam != "" {
+		region = regionParam
+	} else if apiDomainParam != "" {
+		// Try to extract region from apiDomain, but don't fail if it doesn't match the pattern
+		extractedRegion, err := ExtractRegionFromDomain(apiDomainParam)
+		if err != nil {
+			return nil, fmt.Errorf("could not extract region from apiDomain: %v", err)
+		}
+		region = extractedRegion
 	}
 
-	virtualAgentName := getFromEventParameterOrEnv(event, "virtualAgentName", "")
+	if region == "" {
+		return nil, fmt.Errorf("region is required")
+	}
+
+	// Calculate apiDomain from region if not provided, otherwise use provided apiDomain
+	var domain string
+	if apiDomainParam != "" {
+		domain = apiDomainParam
+	} else {
+		domain = BuildAPIDomainFromRegion(region)
+	}
+
+	// Validate domain to prevent injection attacks
+	if err := ValidateDomain(domain); err != nil {
+		return nil, fmt.Errorf("invalid domain: %v", err)
+	}
+
+	action := GetFromEventParameterOrEnv(event, "action", "")
+	if action == "" {
+		return nil, fmt.Errorf("action is required")
+	}
+
+	apiKey := GetFromEventParameterOrEnv(event, "apiKey", "") // Deprecated: use oauthClientId/oauthClientSecret instead
+	oauthClientID := GetFromEventParameterOrEnv(event, "oauthClientId", "")
+	oauthClientSecret := GetFromEventParameterOrEnv(event, "oauthClientSecret", "")
+
+	virtualAgentName := GetFromEventParameterOrEnv(event, "virtualAgentName", "")
 	if virtualAgentName == "" {
 		return nil, fmt.Errorf("virtualAgentName is required")
 	}
 
-	fmt.Printf("Domain: %s, Action: %s, Virtual Agent Name: %s\n", domain, action, virtualAgentName)
-	customer, profile, _, err := parseVirtualAgentName(virtualAgentName)
+	customer, profile, virtualAgentID, err := ParseVirtualAgentName(virtualAgentName)
 	if err != nil {
-		fmt.Printf("Error parsing virtual agent name: %v\n", err)
+		s.logger.Errorf("Error parsing virtual agent name: %v", err)
 		return nil, err
 	}
 
+	// Validate path segments to prevent injection attacks
+	if err := ValidatePathSegment(customer, "customer"); err != nil {
+		return nil, err
+	}
+	if err := ValidatePathSegment(profile, "profile"); err != nil {
+		return nil, err
+	}
+	if err := ValidatePathSegment(virtualAgentID, "virtualAgentID"); err != nil {
+		return nil, err
+	}
+
+	// Either API key (deprecated) or OAuth 2 credentials must be provided
+	var authConfig *AuthConfig
+	if oauthClientID != "" && oauthClientSecret != "" {
+		// Use OAuth 2 authentication
+		s.logger.Infof("Using OAuth 2 authentication")
+		authConfig = &AuthConfig{
+			Region:            region,
+			OAuthClientID:     oauthClientID,
+			OAuthClientSecret: oauthClientSecret,
+			TokenFetcher:      s.tokenFetcher,
+		}
+	} else if apiKey != "" {
+		// Use API key authentication (deprecated)
+		s.logger.Warnf("Using API key authentication (deprecated)")
+		authConfig = &AuthConfig{
+			APIKey: apiKey,
+		}
+	} else {
+		return nil, fmt.Errorf("either apiKey (deprecated) or oauthClientId/oauthClientSecret must be provided")
+	}
+
+	// Get supportedDtmfChars from environment variable only, default to "0123456789*"
+	supportedDtmfChars := os.Getenv("supportedDtmfChars")
+	if supportedDtmfChars == "" {
+		supportedDtmfChars = "0123456789*"
+	}
+
+	// Create handlers with authConfig, domain, parsed components, and event
+	handlers := NewHandlers(s.logger, authConfig, domain, customer, profile, virtualAgentID, supportedDtmfChars, event)
+
+	s.logger.Infof("Domain: %s, Region: %s, Action: %s, Virtual Agent Name: %s", domain, region, action, virtualAgentName)
+
 	switch action {
 	case "get_pstn_transfer_data":
-		result, err = getPSTNTransferData(ctx, apiKey, domain, virtualAgentName, &event.Details)
+		result, err = handlers.GetPSTNTransferData(ctx)
 	case "get_handoff_data":
-		result, err = getHandoffData(ctx, apiKey, domain, customer, profile, &event.Details.ContactData)
+		result, err = handlers.GetHandoffData(ctx)
 	default:
 		return nil, fmt.Errorf("invalid action: %s", action)
 	}
@@ -177,28 +145,6 @@ func handler(ctx context.Context, event events.ConnectEvent) (events.ConnectResp
 	}
 
 	return *result, nil
-}
-
-func getFromEventParameterOrEnv(event events.ConnectEvent, key, defaultValue string) string {
-	if value, ok := event.Details.Parameters[key]; ok {
-		return value
-	}
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
-
-// 1. Copy the map without the keys in filteredKeys.
-// 2. Convert the value type to interface{}.
-func copyMap(original map[string]string, filteredKeys []string) map[string]any {
-	copy := make(map[string]any)
-	for k, v := range original {
-		if !slices.Contains(filteredKeys, k) {
-			copy[k] = v
-		}
-	}
-	return copy
 }
 
 func main() {

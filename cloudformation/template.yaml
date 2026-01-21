@@ -2,10 +2,16 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: "AWS Lambda function for Amazon Connect PSTN Transfer"
 
 Parameters:
-  ApiKey:
+  OAuthClientId:
     Type: String
     NoEcho: true
-    Description: API Key for authentication with the Cresta API
+    Description: OAuth 2 Client ID for authentication
+    MinLength: 1
+
+  OAuthClientSecret:
+    Type: String
+    NoEcho: true
+    Description: OAuth 2 Client Secret for authentication
     MinLength: 1
 
   VirtualAgentName:
@@ -13,10 +19,10 @@ Parameters:
     Description: "Resource name of the virtual agent. Format: customers/{customer}/profiles/{profile}/virtualAgents/{virtualAgentID}"
     MinLength: 1
 
-  ApiDomain:
+  Region:
     Type: String
-    Description: "Domain of the Cresta API. Typically https://api.${cluster}.cresta.com"
-    Default: "https://api.us-west-2-prod.cresta.com"
+    Description: "AWS region (e.g. us-west-2-prod, chat-prod, voice-prod, us-east-1-prod, schwab-prod, ca-central-1-prod, ap-southeast-2-prod, eu-west-2-prod). Defaults to us-west-2-prod"
+    Default: "us-west-2-prod"
 
   CodeS3Bucket:
     Type: String
@@ -71,9 +77,10 @@ Resources:
         - arm64
       Environment:
         Variables:
-          apiKey: !Ref ApiKey
+          oauthClientId: !Ref OAuthClientId
+          oauthClientSecret: !Ref OAuthClientSecret
+          region: !Ref Region
           virtualAgentName: !Ref VirtualAgentName
-          apiDomain: !Ref ApiDomain
       Tags:
         - Key: Name
           Value: !Sub "${FunctionName}"

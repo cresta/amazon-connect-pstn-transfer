@@ -42,9 +42,9 @@
             }
         },
         "Parameters": {
-            "action": "get_handoff_data",
+            "action": "get_pstn_transfer_data",
             "virtualAgentName": "customers/cresta/profiles/walter-dev/virtualAgents/556b441c-1993-4057-925c-c4ef53f840a0",
-            "apiDomain": "https://api.voice-staging.cresta.ai"
+            "region": "voice-staging"
         }
     },
     "Name": "ContactFlowEvent"

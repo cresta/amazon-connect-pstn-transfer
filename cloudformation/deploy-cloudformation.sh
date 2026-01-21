@@ -20,9 +20,16 @@ if [ -z "$stack_name" ]; then
     exit 1
 fi
 
-read -p "Enter API Key (required): " api_key
-if [ -z "$api_key" ]; then
-    echo "Error: API Key is required"
+read -p "Enter OAuth Client ID (required): " oauth_client_id
+if [ -z "$oauth_client_id" ]; then
+    echo "Error: OAuth Client ID is required"
+    exit 1
+fi
+
+read -sp "Enter OAuth Client Secret (required): " oauth_client_secret
+echo ""
+if [ -z "$oauth_client_secret" ]; then
+    echo "Error: OAuth Client Secret is required"
     exit 1
 fi
 
@@ -32,9 +39,9 @@ if [ -z "$virtual_agent_name" ]; then
     exit 1
 fi
 
-read -p "Enter API Domain (optional, default: https://api.us-west-2-prod.cresta.com): " api_domain
-if [ -z "$api_domain" ]; then
-    api_domain="https://api.us-west-2-prod.cresta.com"
+read -p "Enter Region (optional, default: us-west-2-prod): " region
+if [ -z "$region" ]; then
+    region="us-west-2-prod"
 fi
 
 read -p "Enter S3 bucket name for Lambda code (required): " s3_bucket
@@ -64,8 +71,13 @@ if [ -z "$stack_name" ]; then
     exit 1
 fi
 
-if [ -z "$api_key" ]; then
-    echo "Error: API Key is required"
+if [ -z "$oauth_client_id" ]; then
+    echo "Error: OAuth Client ID is required"
+    exit 1
+fi
+
+if [ -z "$oauth_client_secret" ]; then
+    echo "Error: OAuth Client Secret is required"
     exit 1
 fi
 
@@ -83,7 +95,7 @@ echo ""
 
 # Build the zip
 echo "Building Lambda function..."
-GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o bootstrap main.go && zip -j "$CODE_ZIP" bootstrap
+GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o bootstrap . && zip -j "$CODE_ZIP" bootstrap
 
 if [ ! -f "$CODE_ZIP" ]; then
     echo "Error: Failed to create deployment package"
@@ -111,9 +123,10 @@ if [ -z "$stack_exists" ]; then
         --stack-name "$stack_name" \
         --template-body file://"$TEMPLATE_FILE" \
         --parameters \
-            ParameterKey=ApiKey,ParameterValue="$api_key" \
+            ParameterKey=OAuthClientId,ParameterValue="$oauth_client_id" \
+            ParameterKey=OAuthClientSecret,ParameterValue="$oauth_client_secret" \
             ParameterKey=VirtualAgentName,ParameterValue="$virtual_agent_name" \
-            ParameterKey=ApiDomain,ParameterValue="$api_domain" \
+            ParameterKey=Region,ParameterValue="$region" \
             ParameterKey=CodeS3Bucket,ParameterValue="$s3_bucket" \
             ParameterKey=CodeS3Key,ParameterValue="$code_s3_key" \
             ParameterKey=FunctionName,ParameterValue="$function_name" \
@@ -137,9 +150,10 @@ else
         --stack-name "$stack_name" \
         --template-body file://"$TEMPLATE_FILE" \
         --parameters \
-            ParameterKey=ApiKey,ParameterValue="$api_key" \
+            ParameterKey=OAuthClientId,ParameterValue="$oauth_client_id" \
+            ParameterKey=OAuthClientSecret,ParameterValue="$oauth_client_secret" \
             ParameterKey=VirtualAgentName,ParameterValue="$virtual_agent_name" \
-            ParameterKey=ApiDomain,ParameterValue="$api_domain" \
+            ParameterKey=Region,ParameterValue="$region" \
             ParameterKey=CodeS3Bucket,ParameterValue="$s3_bucket" \
             ParameterKey=CodeS3Key,ParameterValue="$code_s3_key" \
             ParameterKey=FunctionName,ParameterValue="$function_name" \

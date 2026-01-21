@@ -19,7 +19,7 @@
         {
             "label": "build-debug",
             "type": "shell",
-            "command": "go build -v -gcflags='all=-N -l' main.go",
+            "command": "go build -v -gcflags='all=-N -l' .",
             "options": {
                 "cwd": "${workspaceFolder}"
             }
@@ -27,7 +27,7 @@
         {
             "label": "build-lambda",
             "type": "shell",
-            "command": "GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o bootstrap main.go && zip -j aws-lambda-connect-pstn-transfer.zip bootstrap",
+            "command": "GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o bootstrap . && zip -j aws-lambda-connect-pstn-transfer.zip bootstrap",
             "options": {
                 "cwd": "${workspaceFolder}"
             }
