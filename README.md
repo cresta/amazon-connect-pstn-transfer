@@ -28,17 +28,36 @@ This repository contains multiple implementations of the Lambda function, all fu
 - **README**: [Go Implementation README](./lambdas/pstn-transfer-go/README.md)
 - **Runtime**: Amazon Linux 2023 (Custom Runtime)
 - **Architecture**: ARM64
-- **Handler**: bootstrap
+- **Handler**: `bootstrap`
 
 ### TypeScript Implementation
 - **Location**: [`lambdas/pstn-transfer-ts/`](./lambdas/pstn-transfer-ts/)
 - **README**: [TypeScript Implementation README](./lambdas/pstn-transfer-ts/README.md)
 - **Runtime**: Node.js 24+
 - **Architecture**: ARM64 or x86_64
+- **Handler**: `handler.handler`
 
 Both implementations provide identical functionality and can be used interchangeably. Choose the implementation that best fits your team's expertise and infrastructure requirements.
 
 For implementation-specific details, development setup, and deployment instructions, please refer to the respective README files linked above.
+
+### Lambda Handler Configuration
+
+⚠️ **Important**: The handler configuration differs between implementations:
+
+**Go Implementation**:
+- **Handler**: `bootstrap`
+- Uses a custom runtime with a compiled executable named `bootstrap`
+- No file extension or function name needed - just `bootstrap`
+
+**TypeScript Implementation**:
+- **Handler**: `handler.handler`
+- The deployment package contains `handler.js` at the zip root
+- Handler format: `handler.handler` = `handler.js` file + `handler` export
+
+The CloudFormation template (`infra/cloudformation/template.yaml`) automatically configures the correct handler based on the implementation type. If you're deploying manually or using a different infrastructure tool, ensure the handler matches:
+- **Go**: `bootstrap`
+- **TypeScript**: `handler.handler`
 
 ### Version Management
 
