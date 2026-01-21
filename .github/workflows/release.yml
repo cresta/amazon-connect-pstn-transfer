@@ -26,14 +26,14 @@ jobs:
         run: |
           test -f bootstrap || (echo "bootstrap not found" && exit 1)
           file bootstrap
-          test -f aws-lambda-connect-pstn-transfer.zip || (echo "zip file not found" && exit 1)
-          ls -lh aws-lambda-connect-pstn-transfer.zip
+          test -f aws-lambda-connect-pstn-transfer-go.zip || (echo "zip file not found" && exit 1)
+          ls -lh aws-lambda-connect-pstn-transfer-go.zip
 
       - name: Upload Go artifact
         uses: actions/upload-artifact@v4
         with:
           name: go-lambda-package
-          path: aws-lambda-connect-pstn-transfer.zip
+          path: aws-lambda-connect-pstn-transfer-go.zip
 
   build-typescript:
     name: Build TypeScript Lambda Deployment Package

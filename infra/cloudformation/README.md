@@ -50,7 +50,7 @@ aws cloudformation create-stack \
     ParameterKey=VirtualAgentName,ParameterValue=customers/... \
     ParameterKey=Region,ParameterValue=us-west-2-prod \
     ParameterKey=CodeS3Bucket,ParameterValue=my-bucket \
-    ParameterKey=CodeS3Key,ParameterValue=aws-lambda-connect-pstn-transfer.zip \
+    ParameterKey=CodeS3Key,ParameterValue=aws-lambda-connect-pstn-transfer-go.zip \
     ParameterKey=FunctionName,ParameterValue=aws-lambda-connect-pstn-transfer \
     ParameterKey=RoleName,ParameterValue=aws-lambda-connect-pstn-transfer-role \
   --capabilities CAPABILITY_NAMED_IAM
@@ -90,7 +90,7 @@ The script will:
    - Region (optional, defaults to `us-west-2-prod`)
    - S3 bucket name (required)
    - S3 key (optional, defaults based on implementation type:
-     - Go: `aws-lambda-connect-pstn-transfer.zip`
+     - Go: `aws-lambda-connect-pstn-transfer-go.zip`
      - TypeScript: `aws-lambda-connect-pstn-transfer-ts.zip`)
    - Lambda function name (optional, defaults to `aws-lambda-connect-pstn-transfer`)
    - IAM role name (optional, defaults to `aws-lambda-connect-pstn-transfer-role`)

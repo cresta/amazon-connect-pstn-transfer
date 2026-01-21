@@ -13,7 +13,7 @@ PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
 cd "$PROJECT_ROOT" || exit 1
 
 LAMBDA_DIR="lambdas/pstn-transfer-go"
-OUTPUT_ZIP="aws-lambda-connect-pstn-transfer.zip"
+OUTPUT_ZIP="aws-lambda-connect-pstn-transfer-go.zip"
 BUILD_DIR=$(mktemp -d)
 trap "rm -rf $BUILD_DIR" EXIT
 

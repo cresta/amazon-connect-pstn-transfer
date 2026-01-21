@@ -161,7 +161,7 @@ case "$implementation_choice" in
         RUNTIME="provided.al2023"
         HANDLER="bootstrap"
         ARCHITECTURE="arm64"
-        ZIP_FILE="aws-lambda-connect-pstn-transfer.zip"
+        ZIP_FILE="aws-lambda-connect-pstn-transfer-go.zip"
         BUILD_SCRIPT="build-go-lambda.sh"
         ;;
     2)

@@ -95,7 +95,7 @@ Resources:
           - UseDefaultCodeS3Key
           - !If
             - IsGoImplementation
-            - aws-lambda-connect-pstn-transfer.zip
+            - aws-lambda-connect-pstn-transfer-go.zip
             - aws-lambda-connect-pstn-transfer-ts.zip
           - !Ref CodeS3Key
       Architectures:
