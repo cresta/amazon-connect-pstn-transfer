@@ -156,7 +156,7 @@ You can also deploy the Lambda function manually through the AWS Console. Follow
    - Go to "Configuration" → "Environment variables"
    - Click "Edit" → "Add environment variable" for each:
      - `oauthClientId`: Your OAuth 2 Client ID
-     - `oauthClientSecret`: Your OAuth 2 Client Secret (mark as "Encrypt" for security)
+     - `oauthClientSecret`: Your OAuth 2 Client Secret
      - `region`: Your AWS region (e.g., `us-west-2-prod`)
      - `virtualAgentName`: Resource name in format `customers/{customer}/profiles/{profile}/virtualAgents/{virtualAgentID}`
    - Click "Save"
