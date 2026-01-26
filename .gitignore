@@ -122,4 +122,4 @@ coverage/
 .cache/
 
 # Ignore Go implementation
-pstn-transfer-go
+lambdas/pstn-transfer-go/pstn-transfer-go

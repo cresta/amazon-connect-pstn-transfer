@@ -43,17 +43,45 @@ if [ -z "$stack_name" ]; then
     exit 1
 fi
 
-read -p "Enter OAuth Client ID (required): " oauth_client_id
-if [ -z "$oauth_client_id" ]; then
-    echo "Error: OAuth Client ID is required"
-    exit 1
+# Prompt for authentication method
+echo ""
+echo "How would you like to provide OAuth credentials?"
+echo "1) AWS Secrets Manager (recommended for production)"
+echo "2) Environment variables"
+read -p "Enter choice [1-2] (default: 2): " auth_choice
+
+if [ -z "$auth_choice" ]; then
+    auth_choice="2"
 fi
 
-read -sp "Enter OAuth Client Secret (required): " oauth_client_secret
-echo ""
-if [ -z "$oauth_client_secret" ]; then
-    echo "Error: OAuth Client Secret is required"
-    exit 1
+oauth_secret_arn=""
+oauth_client_id=""
+oauth_client_secret=""
+
+if [ "$auth_choice" = "1" ]; then
+    read -p "Enter OAuth Secret ARN (required): " oauth_secret_arn
+    if [ -z "$oauth_secret_arn" ]; then
+        echo "Error: OAuth Secret ARN is required"
+        exit 1
+    fi
+    # Set empty values for environment variables when using Secrets Manager
+    oauth_client_id=""
+    oauth_client_secret=""
+else
+    read -p "Enter OAuth Client ID (required): " oauth_client_id
+    if [ -z "$oauth_client_id" ]; then
+        echo "Error: OAuth Client ID is required"
+        exit 1
+    fi
+    
+    read -sp "Enter OAuth Client Secret (required): " oauth_client_secret
+    echo ""
+    if [ -z "$oauth_client_secret" ]; then
+        echo "Error: OAuth Client Secret is required"
+        exit 1
+    fi
+    # Set empty value for Secrets Manager ARN when using environment variables
+    oauth_secret_arn=""
 fi
 
 read -p "Enter Virtual Agent Name (required, format: customers/{customer}/profiles/{profile}/virtualAgents/{virtualAgentID}): " virtual_agent_name
@@ -117,30 +145,36 @@ fi
 echo "Deployment package uploaded successfully"
 echo ""
 
+# Build parameters array (used for both create and update)
+PARAMS=(
+    "ParameterKey=LambdaImplementation,ParameterValue=$lambda_impl"
+    "ParameterKey=OAuthSecretArn,ParameterValue=$oauth_secret_arn"
+    "ParameterKey=OAuthClientId,ParameterValue=$oauth_client_id"
+    "ParameterKey=OAuthClientSecret,ParameterValue=$oauth_client_secret"
+    "ParameterKey=VirtualAgentName,ParameterValue=$virtual_agent_name"
+    "ParameterKey=Region,ParameterValue=$region"
+    "ParameterKey=CodeS3Bucket,ParameterValue=$s3_bucket"
+    "ParameterKey=CodeS3Key,ParameterValue=$code_s3_key"
+    "ParameterKey=FunctionName,ParameterValue=$function_name"
+    "ParameterKey=RoleName,ParameterValue=$role_name"
+)
+
 # Check if stack exists
 stack_exists=$(aws cloudformation describe-stacks --stack-name "$stack_name" --query "Stacks[0].StackName" --output text 2>/dev/null)
 
 if [ -z "$stack_exists" ]; then
     echo "Creating CloudFormation stack..."
+
     aws cloudformation create-stack \
         --stack-name "$stack_name" \
         --template-body file://"$TEMPLATE_FILE" \
-        --parameters \
-            ParameterKey=LambdaImplementation,ParameterValue="$lambda_impl" \
-            ParameterKey=OAuthClientId,ParameterValue="$oauth_client_id" \
-            ParameterKey=OAuthClientSecret,ParameterValue="$oauth_client_secret" \
-            ParameterKey=VirtualAgentName,ParameterValue="$virtual_agent_name" \
-            ParameterKey=Region,ParameterValue="$region" \
-            ParameterKey=CodeS3Bucket,ParameterValue="$s3_bucket" \
-            ParameterKey=CodeS3Key,ParameterValue="$code_s3_key" \
-            ParameterKey=FunctionName,ParameterValue="$function_name" \
-            ParameterKey=RoleName,ParameterValue="$role_name" \
+        --parameters "${PARAMS[@]}" \
         --capabilities CAPABILITY_NAMED_IAM \
         --no-cli-pager
-    
+
     echo "Waiting for stack creation to complete..."
     aws cloudformation wait stack-create-complete --stack-name "$stack_name"
-    
+
     if [ $? -eq 0 ]; then
         echo "Stack created successfully!"
         aws cloudformation describe-stacks --stack-name "$stack_name" --query "Stacks[0].Outputs" --output table
@@ -150,26 +184,18 @@ if [ -z "$stack_exists" ]; then
     fi
 else
     echo "Updating CloudFormation stack..."
+
     aws cloudformation update-stack \
         --stack-name "$stack_name" \
         --template-body file://"$TEMPLATE_FILE" \
-        --parameters \
-            ParameterKey=LambdaImplementation,ParameterValue="$lambda_impl" \
-            ParameterKey=OAuthClientId,ParameterValue="$oauth_client_id" \
-            ParameterKey=OAuthClientSecret,ParameterValue="$oauth_client_secret" \
-            ParameterKey=VirtualAgentName,ParameterValue="$virtual_agent_name" \
-            ParameterKey=Region,ParameterValue="$region" \
-            ParameterKey=CodeS3Bucket,ParameterValue="$s3_bucket" \
-            ParameterKey=CodeS3Key,ParameterValue="$code_s3_key" \
-            ParameterKey=FunctionName,ParameterValue="$function_name" \
-            ParameterKey=RoleName,ParameterValue="$role_name" \
+        --parameters "${PARAMS[@]}" \
         --capabilities CAPABILITY_NAMED_IAM \
         --no-cli-pager
-    
+
     if [ $? -eq 0 ]; then
         echo "Waiting for stack update to complete..."
         aws cloudformation wait stack-update-complete --stack-name "$stack_name"
-        
+
         if [ $? -eq 0 ]; then
             echo "Stack updated successfully!"
             aws cloudformation describe-stacks --stack-name "$stack_name" --query "Stacks[0].Outputs" --output table

@@ -190,7 +190,7 @@ describe("HandlerService", () => {
 			const service = new DefaultHandlerService(logger);
 			const controller = new AbortController();
 			await expect(service.handle(controller.signal, event)).rejects.toThrow(
-				"either apiKey (deprecated) or oauthClientId/oauthClientSecret must be provided",
+				"either apiKey (deprecated), oauthClientId/oauthClientSecret, or oauthSecretArn must be provided",
 			);
 		});
 

@@ -50,10 +50,28 @@ The function accepts configuration in two ways:
 
 #### Authentication
 
-The function uses OAuth 2 Client Credentials Flow for authentication:
+The function uses OAuth 2 Client Credentials Flow for authentication. You can provide credentials in one of two ways:
+
+**Option 1: AWS Secrets Manager** ✅ **RECOMMENDED for production**
+
+- **oauthSecretArn**: ARN of the AWS Secrets Manager secret containing OAuth credentials
+  - The secret must be a JSON object with `oauthClientId` and `oauthClientSecret` fields
+  - Example secret value:
+    ```json
+    {
+      "oauthClientId": "your-client-id",
+      "oauthClientSecret": "your-client-secret"
+    }
+    ```
+  - The Lambda execution role must have `secretsmanager:GetSecretValue` permission for the secret
+  - If provided, takes precedence over `oauthClientId`/`oauthClientSecret` environment variables
+
+**Option 2: Environment Variables**
 
 - **oauthClientId**: OAuth 2 client ID
 - **oauthClientSecret**: OAuth 2 client secret
+
+> **Note**: If both `oauthSecretArn` and `oauthClientId`/`oauthClientSecret` are provided, `oauthSecretArn` takes precedence.
 
 ### Usage
 
@@ -78,7 +96,8 @@ The Lambda function expects an Amazon Connect event with the following structure
 ```
 
 > **Note**: 
-> - It's recommended to set `oauthClientId`, `oauthClientSecret`, `region`, and `virtualAgentName` as environment variables in the Lambda function configuration for better security and maintainability.
+> - **For production deployments**, it's recommended to use AWS Secrets Manager (`oauthSecretArn`) for storing OAuth credentials instead of environment variables for better security and credential rotation support.
+> - For other configuration, set `region` and `virtualAgentName` as environment variables in the Lambda function configuration.
 > - Only pass `action` and flow-specific values (like `customParameter` above) as parameters from Amazon Connect.
 > - Any additional parameters beyond the required ones will be included in the `ccaasMetadata` sent to the backend API.
 

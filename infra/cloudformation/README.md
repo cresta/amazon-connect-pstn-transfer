@@ -4,9 +4,25 @@ This directory contains CloudFormation templates for deploying the AWS Lambda fu
 
 ## Authentication
 
-The Lambda function supports OAuth Client Credentials.
+The Lambda function supports OAuth Client Credentials. You can provide credentials in one of two ways:
+
+**Option 1: AWS Secrets Manager** ✅ **RECOMMENDED for production**
+
+- Provide `OAuthSecretArn` parameter with the ARN of your Secrets Manager secret
+- The secret must be a JSON object with `oauthClientId` and `oauthClientSecret` fields:
+  ```json
+  {
+    "oauthClientId": "your-client-id",
+    "oauthClientSecret": "your-client-secret"
+  }
+  ```
+- The CloudFormation template will automatically add the necessary IAM permissions to access the secret
+- If provided, takes precedence over `OAuthClientId`/`OAuthClientSecret` parameters
+
+**Option 2: Environment Variables**
 
 - Provide `OAuthClientId` and `OAuthClientSecret` parameters
+- These will be set as Lambda environment variables
 
 ## Usage
 
@@ -38,7 +54,23 @@ The Lambda function supports OAuth Client Credentials.
 Alternatively, you can specify parameters inline:
 
 ```bash
-# Using OAuth 2 authentication (Recommended)
+# Using AWS Secrets Manager (Recommended for production)
+# For Go implementation (default)
+aws cloudformation create-stack \
+  --stack-name my-stack \
+  --template-body file://template.yaml \
+  --parameters \
+    ParameterKey=LambdaImplementation,ParameterValue=go \
+    ParameterKey=OAuthSecretArn,ParameterValue=arn:aws:secretsmanager:us-west-2:123456789012:secret:my-oauth-secret \
+    ParameterKey=VirtualAgentName,ParameterValue=customers/... \
+    ParameterKey=Region,ParameterValue=us-west-2-prod \
+    ParameterKey=CodeS3Bucket,ParameterValue=my-bucket \
+    ParameterKey=CodeS3Key,ParameterValue=aws-lambda-connect-pstn-transfer-go.zip \
+    ParameterKey=FunctionName,ParameterValue=aws-lambda-connect-pstn-transfer \
+    ParameterKey=RoleName,ParameterValue=aws-lambda-connect-pstn-transfer-role \
+  --capabilities CAPABILITY_NAMED_IAM
+
+# Using OAuth 2 credentials as environment variables
 # For Go implementation (default)
 aws cloudformation create-stack \
   --stack-name my-stack \
@@ -55,14 +87,13 @@ aws cloudformation create-stack \
     ParameterKey=RoleName,ParameterValue=aws-lambda-connect-pstn-transfer-role \
   --capabilities CAPABILITY_NAMED_IAM
 
-# For TypeScript implementation
+# For TypeScript implementation (using Secrets Manager)
 aws cloudformation create-stack \
   --stack-name my-stack \
   --template-body file://template.yaml \
   --parameters \
     ParameterKey=LambdaImplementation,ParameterValue=typescript \
-    ParameterKey=OAuthClientId,ParameterValue=your-client-id \
-    ParameterKey=OAuthClientSecret,ParameterValue=your-client-secret \
+    ParameterKey=OAuthSecretArn,ParameterValue=arn:aws:secretsmanager:us-west-2:123456789012:secret:my-oauth-secret \
     ParameterKey=VirtualAgentName,ParameterValue=customers/... \
     ParameterKey=Region,ParameterValue=us-west-2-prod \
     ParameterKey=CodeS3Bucket,ParameterValue=my-bucket \
@@ -84,8 +115,11 @@ The script will:
 1. Prompt for all required values:
    - Lambda implementation type: Go or TypeScript (default: Go)
    - CloudFormation stack name (required)
-   - Authentication method: OAuth 2
-     - OAuth Client ID and OAuth Client Secret (required)
+   - Authentication method:
+     - Option 1: AWS Secrets Manager (recommended for production)
+       - OAuth Secret ARN (required)
+     - Option 2: OAuth 2 credentials as environment variables
+       - OAuth Client ID and OAuth Client Secret (required)
    - Virtual Agent Name (required)
    - Region (optional, defaults to `us-west-2-prod`)
    - S3 bucket name (required)
