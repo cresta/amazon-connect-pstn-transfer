@@ -9,10 +9,24 @@ info:
     name: Cresta
     url: https://cresta.com
 servers:
-  - url: https://api.example.com
-    description: Production server (replace with actual domain)
-  - url: https://api-staging.example.com
-    description: Staging server (replace with actual domain)
+  - url: https://api.us-west-2-prod.cresta.com
+    description: Production server - US West 2
+  - url: https://api.us-east-1-prod.cresta.com
+    description: Production server - US East 1
+  - url: https://api.chat-prod.cresta.com
+    description: Production server - Chat
+  - url: https://api.voice-prod.cresta.com
+    description: Production server - Voice
+  - url: https://api.ca-central-1-prod.cresta.com
+    description: Production server - Canada Central 1
+  - url: https://api.ap-southeast-2-prod.cresta.com
+    description: Production server - Asia Pacific Southeast 2
+  - url: https://api.eu-west-2-prod.cresta.com
+    description: Production server - Europe West 2
+  - url: https://api.us-west-2-staging.cresta.ai
+    description: Staging server - US West 2
+  - url: https://api.us-east-1-staging.cresta.ai
+    description: Staging server - US East 1
 
 security:
   - OAuth2: []
@@ -293,9 +307,13 @@ components:
       description: |
         OAuth 2.0 Client Credentials flow for authentication.
         This is the preferred authentication method.
+        The token URL is region-specific and follows the pattern: https://auth.{region}.cresta.ai/v1/oauth/regionalToken
+        Examples:
+        - Production: https://auth.us-west-2-prod.cresta.ai/v1/oauth/regionalToken
+        - Staging: https://auth.us-west-2-staging.cresta.ai/v1/oauth/regionalToken
       flows:
         clientCredentials:
-          tokenUrl: /oauth/token
+          tokenUrl: https://auth.us-west-2-prod.cresta.ai/v1/oauth/regionalToken
           scopes: {}
 
     ApiKeyAuth:
