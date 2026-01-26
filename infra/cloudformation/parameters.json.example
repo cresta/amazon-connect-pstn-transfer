@@ -4,12 +4,16 @@
     "ParameterValue": "go"
   },
   {
+    "ParameterKey": "OAuthSecretArn",
+    "ParameterValue": ""
+  },
+  {
     "ParameterKey": "OAuthClientId",
-    "ParameterValue": "your-oauth-client-id"
+    "ParameterValue": ""
   },
   {
     "ParameterKey": "OAuthClientSecret",
-    "ParameterValue": "your-oauth-client-secret"
+    "ParameterValue": ""
   },
   {
     "ParameterKey": "VirtualAgentName",
@@ -36,4 +40,3 @@
     "ParameterValue": "aws-lambda-connect-pstn-transfer-role"
   }
 ]
-

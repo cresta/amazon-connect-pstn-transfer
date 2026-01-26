@@ -78,6 +78,7 @@ func (s *HandlerService) Handle(ctx context.Context, event events.ConnectEvent) 
 	}
 
 	apiKey := GetFromEventParameterOrEnv(event, "apiKey", "") // Deprecated: use oauthClientId/oauthClientSecret instead
+	oauthSecretArn := GetFromEventParameterOrEnv(event, "oauthSecretArn", "")
 	oauthClientID := GetFromEventParameterOrEnv(event, "oauthClientId", "")
 	oauthClientSecret := GetFromEventParameterOrEnv(event, "oauthClientSecret", "")
 
@@ -104,14 +105,31 @@ func (s *HandlerService) Handle(ctx context.Context, event events.ConnectEvent) 
 	}
 
 	// Either API key (deprecated) or OAuth 2 credentials must be provided
+	// Priority: Secrets Manager > Environment/Parameters > API Key (deprecated)
 	var authConfig *AuthConfig
-	if oauthClientID != "" && oauthClientSecret != "" {
+	resolvedOAuthClientID := oauthClientID
+	resolvedOAuthClientSecret := oauthClientSecret
+
+	// Try to fetch from Secrets Manager if ARN is provided
+	if oauthSecretArn != "" {
+		s.logger.Infof("Fetching OAuth credentials from Secrets Manager: %s", oauthSecretArn)
+		credentials, err := GetOAuthCredentialsFromSecretsManager(ctx, s.logger, oauthSecretArn)
+		if err != nil {
+			s.logger.Errorf("Failed to retrieve credentials from Secrets Manager: %v", err)
+			return nil, fmt.Errorf("failed to retrieve OAuth credentials from Secrets Manager: %w", err)
+		}
+		resolvedOAuthClientID = credentials.OAuthClientID
+		resolvedOAuthClientSecret = credentials.OAuthClientSecret
+		s.logger.Infof("Successfully retrieved OAuth credentials from Secrets Manager")
+	}
+
+	if resolvedOAuthClientID != "" && resolvedOAuthClientSecret != "" {
 		// Use OAuth 2 authentication
 		s.logger.Infof("Using OAuth 2 authentication")
 		authConfig = &AuthConfig{
 			Region:            region,
-			OAuthClientID:     oauthClientID,
-			OAuthClientSecret: oauthClientSecret,
+			OAuthClientID:     resolvedOAuthClientID,
+			OAuthClientSecret: resolvedOAuthClientSecret,
 			TokenFetcher:      s.tokenFetcher,
 		}
 	} else if apiKey != "" {
@@ -121,7 +139,7 @@ func (s *HandlerService) Handle(ctx context.Context, event events.ConnectEvent) 
 			APIKey: apiKey,
 		}
 	} else {
-		return nil, fmt.Errorf("either apiKey (deprecated) or oauthClientId/oauthClientSecret must be provided")
+		return nil, fmt.Errorf("either apiKey (deprecated), oauthClientId/oauthClientSecret, or oauthSecretArn must be provided")
 	}
 
 	// Get supportedDtmfChars from environment variable only, default to "0123456789*"

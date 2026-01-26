@@ -10,17 +10,22 @@ Parameters:
       - typescript
     Default: go
 
+  OAuthSecretArn:
+    Type: String
+    Description: ARN of the AWS Secrets Manager secret containing OAuth credentials (JSON with oauthClientId and oauthClientSecret fields). If provided, takes precedence over OAuthClientId/OAuthClientSecret.
+    Default: ""
+
   OAuthClientId:
     Type: String
     NoEcho: true
-    Description: OAuth 2 Client ID for authentication
-    MinLength: 1
+    Description: OAuth 2 Client ID for authentication (required if OAuthSecretArn is not provided)
+    Default: ""
 
   OAuthClientSecret:
     Type: String
     NoEcho: true
-    Description: OAuth 2 Client Secret for authentication
-    MinLength: 1
+    Description: OAuth 2 Client Secret for authentication (required if OAuthSecretArn is not provided)
+    Default: ""
 
   VirtualAgentName:
     Type: String
@@ -55,6 +60,7 @@ Parameters:
 Conditions:
   IsGoImplementation: !Equals [!Ref LambdaImplementation, "go"]
   UseDefaultCodeS3Key: !Equals [!Ref CodeS3Key, ""]
+  UseSecretsManager: !Not [!Equals [!Ref OAuthSecretArn, ""]]
 
 Resources:
   LambdaExecutionRole:
@@ -70,6 +76,18 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - !If
+          - UseSecretsManager
+          - PolicyName: SecretsManagerAccess
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - secretsmanager:GetSecretValue
+                  Resource: !Ref OAuthSecretArn
+          - !Ref AWS::NoValue
       Tags:
         - Key: Name
           Value: !Sub "${RoleName}"
@@ -102,6 +120,7 @@ Resources:
         - arm64
       Environment:
         Variables:
+          oauthSecretArn: !Ref OAuthSecretArn
           oauthClientId: !Ref OAuthClientId
           oauthClientSecret: !Ref OAuthClientSecret
           region: !Ref Region

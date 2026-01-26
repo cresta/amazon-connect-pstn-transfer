@@ -8,6 +8,7 @@ import { CrestaAPIClient } from "./client.js";
 import { Handlers } from "./handlers.js";
 import type { AuthConfig } from "./httpclient.js";
 import { type Logger, newLogger } from "./logger.js";
+import { getOAuthCredentialsFromSecretsManager } from "./secretsmanager.js";
 import {
 	buildAPIDomainFromRegion,
 	extractRegionFromDomain,
@@ -75,6 +76,7 @@ export class DefaultHandlerService implements HandlerService {
 		}
 
 		const apiKey = getFromEventParameterOrEnv(event, "apiKey", ""); // Deprecated: use oauthClientId/oauthClientSecret instead
+		const oauthSecretArn = getFromEventParameterOrEnv(event, "oauthSecretArn", "");
 		const oauthClientID = getFromEventParameterOrEnv(event, "oauthClientId", "");
 		const oauthClientSecret = getFromEventParameterOrEnv(event, "oauthClientSecret", "");
 
@@ -107,14 +109,38 @@ export class DefaultHandlerService implements HandlerService {
 		}
 
 		// Either API key (deprecated) or OAuth 2 credentials must be provided
+		// Priority: Secrets Manager > Environment/Parameters > API Key (deprecated)
 		let authConfig: AuthConfig;
-		if (oauthClientID && oauthClientSecret) {
+		let resolvedOAuthClientID = oauthClientID;
+		let resolvedOAuthClientSecret = oauthClientSecret;
+
+		// Try to fetch from Secrets Manager if ARN is provided
+		if (oauthSecretArn) {
+			this.logger.infof("Fetching OAuth credentials from Secrets Manager: %s", oauthSecretArn);
+			try {
+				const credentials = await getOAuthCredentialsFromSecretsManager(
+					this.logger,
+					oauthSecretArn,
+				);
+				resolvedOAuthClientID = credentials.oauthClientId;
+				resolvedOAuthClientSecret = credentials.oauthClientSecret;
+				this.logger.infof("Successfully retrieved OAuth credentials from Secrets Manager");
+			} catch (err) {
+				const errorMessage = err instanceof Error ? err.message : String(err);
+				this.logger.errorf("Failed to retrieve credentials from Secrets Manager: %v", errorMessage);
+				throw new Error(
+					`failed to retrieve OAuth credentials from Secrets Manager: ${errorMessage}`,
+				);
+			}
+		}
+
+		if (resolvedOAuthClientID && resolvedOAuthClientSecret) {
 			// Use OAuth 2 authentication
 			this.logger.infof("Using OAuth 2 authentication");
 			authConfig = {
 				region,
-				oauthClientID,
-				oauthClientSecret,
+				oauthClientID: resolvedOAuthClientID,
+				oauthClientSecret: resolvedOAuthClientSecret,
 				tokenFetcher: this.tokenFetcher,
 			};
 		} else if (apiKey) {
@@ -125,7 +151,7 @@ export class DefaultHandlerService implements HandlerService {
 			};
 		} else {
 			throw new Error(
-				"either apiKey (deprecated) or oauthClientId/oauthClientSecret must be provided",
+				"either apiKey (deprecated), oauthClientId/oauthClientSecret, or oauthSecretArn must be provided",
 			);
 		}
 

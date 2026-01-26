@@ -27,6 +27,7 @@ if [ -f "var.json" ]; then
     echo ""
     
     # Extract values from var.json
+    oauth_secret_arn=$(extract_json_value "oauthSecretArn" "var.json")
     oauth_client_id=$(extract_json_value "oauthClientId" "var.json")
     oauth_client_secret=$(extract_json_value "oauthClientSecret" "var.json")
     virtual_agent_name=$(extract_json_value "virtualAgentName" "var.json")
@@ -39,8 +40,12 @@ if [ -f "var.json" ]; then
     
     # Display current values
     echo "Current configuration:"
-    echo "  OAuth Client ID: ${oauth_client_id:0:10}..." # Show only first 10 chars for security
-    echo "  OAuth Client Secret: ${oauth_client_secret:0:10}..." # Show only first 10 chars for security
+    if [ -n "$oauth_secret_arn" ]; then
+        echo "  OAuth Secret ARN: $oauth_secret_arn"
+    else
+        echo "  OAuth Client ID: ${oauth_client_id:0:10}..." # Show only first 10 chars for security
+        echo "  OAuth Client Secret: ${oauth_client_secret:0:10}..." # Show only first 10 chars for security
+    fi
     echo "  Virtual Agent Name: $virtual_agent_name"
     echo "  Region: $region"
     echo ""
@@ -49,18 +54,30 @@ if [ -f "var.json" ]; then
     read -p "Use these values? (y/n): " confirm
     if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
         echo ""
-        # Prompt for new values
-        read -p "Enter OAuth Client ID (required): " oauth_client_id
-        if [ -z "$oauth_client_id" ]; then
-            echo "Error: OAuth Client ID is required"
-            exit 1
-        fi
-        
-        read -sp "Enter OAuth Client Secret (required): " oauth_client_secret
-        echo ""
-        if [ -z "$oauth_client_secret" ]; then
-            echo "Error: OAuth Client Secret is required"
-            exit 1
+        # Ask if using Secrets Manager
+        read -p "Use AWS Secrets Manager for OAuth credentials? (y/n, default: n): " use_secrets_manager
+        if [[ "$use_secrets_manager" =~ ^[Yy]$ ]]; then
+            read -p "Enter OAuth Secret ARN (required): " oauth_secret_arn
+            if [ -z "$oauth_secret_arn" ]; then
+                echo "Error: OAuth Secret ARN is required"
+                exit 1
+            fi
+            oauth_client_id=""
+            oauth_client_secret=""
+        else
+            oauth_secret_arn=""
+            read -p "Enter OAuth Client ID (required): " oauth_client_id
+            if [ -z "$oauth_client_id" ]; then
+                echo "Error: OAuth Client ID is required"
+                exit 1
+            fi
+            
+            read -sp "Enter OAuth Client Secret (required): " oauth_client_secret
+            echo ""
+            if [ -z "$oauth_client_secret" ]; then
+                echo "Error: OAuth Client Secret is required"
+                exit 1
+            fi
         fi
         
         read -p "Enter Virtual Agent Name (required, format: customers/{customer}/profiles/{profile}/virtualAgents/{virtualAgentID}): " virtual_agent_name
@@ -76,17 +93,37 @@ if [ -f "var.json" ]; then
     fi
 else
     # Prompt for values if var.json doesn't exist
-    read -p "Enter OAuth Client ID (required): " oauth_client_id
-    if [ -z "$oauth_client_id" ]; then
-        echo "Error: OAuth Client ID is required"
-        exit 1
+    echo "How would you like to provide OAuth credentials?"
+    echo "1) AWS Secrets Manager (recommended for production)"
+    echo "2) Environment variables"
+    read -p "Enter choice [1 or 2] (default: 2): " auth_choice
+    
+    if [ -z "$auth_choice" ]; then
+        auth_choice="2"
     fi
     
-    read -sp "Enter OAuth Client Secret (required): " oauth_client_secret
-    echo ""
-    if [ -z "$oauth_client_secret" ]; then
-        echo "Error: OAuth Client Secret is required"
-        exit 1
+    if [ "$auth_choice" = "1" ]; then
+        read -p "Enter OAuth Secret ARN (required): " oauth_secret_arn
+        if [ -z "$oauth_secret_arn" ]; then
+            echo "Error: OAuth Secret ARN is required"
+            exit 1
+        fi
+        oauth_client_id=""
+        oauth_client_secret=""
+    else
+        oauth_secret_arn=""
+        read -p "Enter OAuth Client ID (required): " oauth_client_id
+        if [ -z "$oauth_client_id" ]; then
+            echo "Error: OAuth Client ID is required"
+            exit 1
+        fi
+        
+        read -sp "Enter OAuth Client Secret (required): " oauth_client_secret
+        echo ""
+        if [ -z "$oauth_client_secret" ]; then
+            echo "Error: OAuth Client Secret is required"
+            exit 1
+        fi
     fi
     
     read -p "Enter Virtual Agent Name (required, format: customers/{customer}/profiles/{profile}/virtualAgents/{virtualAgentID}): " virtual_agent_name
@@ -102,13 +139,13 @@ else
 fi
 
 # Validate required fields
-if [ -z "$oauth_client_id" ]; then
-    echo "Error: OAuth Client ID is required"
+if [ -z "$oauth_secret_arn" ] && [ -z "$oauth_client_id" ]; then
+    echo "Error: Either OAuth Secret ARN or OAuth Client ID is required"
     exit 1
 fi
 
-if [ -z "$oauth_client_secret" ]; then
-    echo "Error: OAuth Client Secret is required"
+if [ -z "$oauth_secret_arn" ] && [ -z "$oauth_client_secret" ]; then
+    echo "Error: OAuth Client Secret is required when not using Secrets Manager"
     exit 1
 fi
 
@@ -120,19 +157,22 @@ fi
 # Create or update var.json file
 if command -v jq &> /dev/null; then
     jq -n \
-        --arg oauthClientId "$oauth_client_id" \
-        --arg oauthClientSecret "$oauth_client_secret" \
+        --arg oauthSecretArn "${oauth_secret_arn:-}" \
+        --arg oauthClientId "${oauth_client_id:-}" \
+        --arg oauthClientSecret "${oauth_client_secret:-}" \
         --arg virtualAgentName "$virtual_agent_name" \
         --arg region "$region" \
-        '{oauthClientId: $oauthClientId, oauthClientSecret: $oauthClientSecret, virtualAgentName: $virtualAgentName, region: $region}' > var.json
+        '{oauthSecretArn: $oauthSecretArn, oauthClientId: $oauthClientId, oauthClientSecret: $oauthClientSecret, virtualAgentName: $virtualAgentName, region: $region}' > var.json
 else
     # Fallback to manual JSON creation (basic escaping)
-    oauth_client_id_escaped=$(echo "$oauth_client_id" | sed 's/"/\\"/g')
-    oauth_client_secret_escaped=$(echo "$oauth_client_secret" | sed 's/"/\\"/g')
+    oauth_secret_arn_escaped=$(echo "${oauth_secret_arn:-}" | sed 's/"/\\"/g')
+    oauth_client_id_escaped=$(echo "${oauth_client_id:-}" | sed 's/"/\\"/g')
+    oauth_client_secret_escaped=$(echo "${oauth_client_secret:-}" | sed 's/"/\\"/g')
     virtual_agent_name_escaped=$(echo "$virtual_agent_name" | sed 's/"/\\"/g')
     region_escaped=$(echo "$region" | sed 's/"/\\"/g')
     cat > var.json <<EOF
 {
+    "oauthSecretArn": "$oauth_secret_arn_escaped",
     "oauthClientId": "$oauth_client_id_escaped",
     "oauthClientSecret": "$oauth_client_secret_escaped",
     "virtualAgentName": "$virtual_agent_name_escaped",
@@ -223,9 +263,62 @@ if [ -z "$role_exists" ]; then
         --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole \
         --no-cli-pager
 
+    # Add Secrets Manager permissions if using Secrets Manager
+    if [ -n "$oauth_secret_arn" ]; then
+        echo "Adding Secrets Manager permissions to IAM role..."
+        aws iam put-role-policy \
+            --role-name $role_name \
+            --policy-name SecretsManagerAccess \
+            --policy-document "{
+                \"Version\": \"2012-10-17\",
+                \"Statement\": [{
+                    \"Effect\": \"Allow\",
+                    \"Action\": [\"secretsmanager:GetSecretValue\"],
+                    \"Resource\": \"$oauth_secret_arn\"
+                }]
+            }" \
+            --no-cli-pager
+    fi
+
     # Wait for role to propagate
     echo "Waiting for role to propagate..."
     sleep 10
+else
+    # Update role policy if switching to/from Secrets Manager
+    if [ -n "$oauth_secret_arn" ]; then
+        # Check if Secrets Manager policy exists
+        secrets_policy_exists=$(aws iam get-role-policy --role-name $role_name --policy-name SecretsManagerAccess --query "PolicyName" --output text 2>/dev/null)
+        if [ -z "$secrets_policy_exists" ]; then
+            echo "Adding Secrets Manager permissions to IAM role..."
+            aws iam put-role-policy \
+                --role-name $role_name \
+                --policy-name SecretsManagerAccess \
+                --policy-document "{
+                    \"Version\": \"2012-10-17\",
+                    \"Statement\": [{
+                        \"Effect\": \"Allow\",
+                        \"Action\": [\"secretsmanager:GetSecretValue\"],
+                        \"Resource\": \"$oauth_secret_arn\"
+                    }]
+                }" \
+                --no-cli-pager
+        else
+            # Update existing policy
+            echo "Updating Secrets Manager permissions..."
+            aws iam put-role-policy \
+                --role-name $role_name \
+                --policy-name SecretsManagerAccess \
+                --policy-document "{
+                    \"Version\": \"2012-10-17\",
+                    \"Statement\": [{
+                        \"Effect\": \"Allow\",
+                        \"Action\": [\"secretsmanager:GetSecretValue\"],
+                        \"Resource\": \"$oauth_secret_arn\"
+                    }]
+                }" \
+                --no-cli-pager
+        fi
+    fi
 fi
 
 # Check if the function already exists
