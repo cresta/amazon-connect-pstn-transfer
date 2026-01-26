@@ -145,36 +145,36 @@ fi
 echo "Deployment package uploaded successfully"
 echo ""
 
+# Build parameters array (used for both create and update)
+PARAMS=(
+    "ParameterKey=LambdaImplementation,ParameterValue=$lambda_impl"
+    "ParameterKey=OAuthSecretArn,ParameterValue=$oauth_secret_arn"
+    "ParameterKey=OAuthClientId,ParameterValue=$oauth_client_id"
+    "ParameterKey=OAuthClientSecret,ParameterValue=$oauth_client_secret"
+    "ParameterKey=VirtualAgentName,ParameterValue=$virtual_agent_name"
+    "ParameterKey=Region,ParameterValue=$region"
+    "ParameterKey=CodeS3Bucket,ParameterValue=$s3_bucket"
+    "ParameterKey=CodeS3Key,ParameterValue=$code_s3_key"
+    "ParameterKey=FunctionName,ParameterValue=$function_name"
+    "ParameterKey=RoleName,ParameterValue=$role_name"
+)
+
 # Check if stack exists
 stack_exists=$(aws cloudformation describe-stacks --stack-name "$stack_name" --query "Stacks[0].StackName" --output text 2>/dev/null)
 
 if [ -z "$stack_exists" ]; then
     echo "Creating CloudFormation stack..."
-    
-    # Build parameters array
-    PARAMS=(
-        "ParameterKey=LambdaImplementation,ParameterValue=$lambda_impl"
-        "ParameterKey=OAuthSecretArn,ParameterValue=$oauth_secret_arn"
-        "ParameterKey=OAuthClientId,ParameterValue=$oauth_client_id"
-        "ParameterKey=OAuthClientSecret,ParameterValue=$oauth_client_secret"
-        "ParameterKey=VirtualAgentName,ParameterValue=$virtual_agent_name"
-        "ParameterKey=Region,ParameterValue=$region"
-        "ParameterKey=CodeS3Bucket,ParameterValue=$s3_bucket"
-        "ParameterKey=CodeS3Key,ParameterValue=$code_s3_key"
-        "ParameterKey=FunctionName,ParameterValue=$function_name"
-        "ParameterKey=RoleName,ParameterValue=$role_name"
-    )
-    
+
     aws cloudformation create-stack \
         --stack-name "$stack_name" \
         --template-body file://"$TEMPLATE_FILE" \
         --parameters "${PARAMS[@]}" \
         --capabilities CAPABILITY_NAMED_IAM \
         --no-cli-pager
-    
+
     echo "Waiting for stack creation to complete..."
     aws cloudformation wait stack-create-complete --stack-name "$stack_name"
-    
+
     if [ $? -eq 0 ]; then
         echo "Stack created successfully!"
         aws cloudformation describe-stacks --stack-name "$stack_name" --query "Stacks[0].Outputs" --output table
@@ -184,32 +184,18 @@ if [ -z "$stack_exists" ]; then
     fi
 else
     echo "Updating CloudFormation stack..."
-    
-    # Build parameters array
-    PARAMS=(
-        "ParameterKey=LambdaImplementation,ParameterValue=$lambda_impl"
-        "ParameterKey=OAuthSecretArn,ParameterValue=$oauth_secret_arn"
-        "ParameterKey=OAuthClientId,ParameterValue=$oauth_client_id"
-        "ParameterKey=OAuthClientSecret,ParameterValue=$oauth_client_secret"
-        "ParameterKey=VirtualAgentName,ParameterValue=$virtual_agent_name"
-        "ParameterKey=Region,ParameterValue=$region"
-        "ParameterKey=CodeS3Bucket,ParameterValue=$s3_bucket"
-        "ParameterKey=CodeS3Key,ParameterValue=$code_s3_key"
-        "ParameterKey=FunctionName,ParameterValue=$function_name"
-        "ParameterKey=RoleName,ParameterValue=$role_name"
-    )
-    
+
     aws cloudformation update-stack \
         --stack-name "$stack_name" \
         --template-body file://"$TEMPLATE_FILE" \
         --parameters "${PARAMS[@]}" \
         --capabilities CAPABILITY_NAMED_IAM \
         --no-cli-pager
-    
+
     if [ $? -eq 0 ]; then
         echo "Waiting for stack update to complete..."
         aws cloudformation wait stack-update-complete --stack-name "$stack_name"
-        
+
         if [ $? -eq 0 ]; then
             echo "Stack updated successfully!"
             aws cloudformation describe-stacks --stack-name "$stack_name" --query "Stacks[0].Outputs" --output table

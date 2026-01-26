@@ -284,40 +284,31 @@ if [ -z "$role_exists" ]; then
     echo "Waiting for role to propagate..."
     sleep 10
 else
-    # Update role policy if switching to/from Secrets Manager
+    # Manage Secrets Manager permissions based on authentication method
     if [ -n "$oauth_secret_arn" ]; then
-        # Check if Secrets Manager policy exists
-        secrets_policy_exists=$(aws iam get-role-policy --role-name $role_name --policy-name SecretsManagerAccess --query "PolicyName" --output text 2>/dev/null)
-        if [ -z "$secrets_policy_exists" ]; then
-            echo "Adding Secrets Manager permissions to IAM role..."
-            aws iam put-role-policy \
-                --role-name $role_name \
-                --policy-name SecretsManagerAccess \
-                --policy-document "{
-                    \"Version\": \"2012-10-17\",
-                    \"Statement\": [{
-                        \"Effect\": \"Allow\",
-                        \"Action\": [\"secretsmanager:GetSecretValue\"],
-                        \"Resource\": \"$oauth_secret_arn\"
-                    }]
-                }" \
-                --no-cli-pager
-        else
-            # Update existing policy
-            echo "Updating Secrets Manager permissions..."
-            aws iam put-role-policy \
-                --role-name $role_name \
-                --policy-name SecretsManagerAccess \
-                --policy-document "{
-                    \"Version\": \"2012-10-17\",
-                    \"Statement\": [{
-                        \"Effect\": \"Allow\",
-                        \"Action\": [\"secretsmanager:GetSecretValue\"],
-                        \"Resource\": \"$oauth_secret_arn\"
-                    }]
-                }" \
-                --no-cli-pager
-        fi
+        echo "Ensuring Secrets Manager permissions on IAM role..."
+        aws iam put-role-policy \
+            --role-name $role_name \
+            --policy-name SecretsManagerAccess \
+            --policy-document "{
+                \"Version\": \"2012-10-17\",
+                \"Statement\": [{
+                    \"Effect\": \"Allow\",
+                    \"Action\": [\"secretsmanager:GetSecretValue\"],
+                    \"Resource\": \"$oauth_secret_arn\"
+                }]
+            }" \
+            --no-cli-pager
+    else
+        # Remove Secrets Manager policy if switching away from Secrets Manager
+        echo "Removing Secrets Manager permissions from IAM role..."
+        aws iam delete-role-policy \
+            --role-name $role_name \
+            --policy-name SecretsManagerAccess \
+            --no-cli-pager 2>/dev/null || {
+            # Policy might not exist, which is fine - suppress error
+            echo "Note: SecretsManagerAccess policy not found (may have been already removed)"
+        }
     fi
 fi
 

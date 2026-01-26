@@ -62,6 +62,16 @@ Conditions:
   UseDefaultCodeS3Key: !Equals [!Ref CodeS3Key, ""]
   UseSecretsManager: !Not [!Equals [!Ref OAuthSecretArn, ""]]
 
+Rules:
+  CredentialsRequired:
+    Assertions:
+      - Assert: !Or
+          - !Not [!Equals [!Ref OAuthSecretArn, ""]]
+          - !And
+            - !Not [!Equals [!Ref OAuthClientId, ""]]
+            - !Not [!Equals [!Ref OAuthClientSecret, ""]]
+        AssertDescription: "Either OAuthSecretArn or both OAuthClientId and OAuthClientSecret must be provided"
+
 Resources:
   LambdaExecutionRole:
     Type: AWS::IAM::Role

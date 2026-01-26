@@ -105,7 +105,7 @@ describe("getOAuthCredentialsFromSecretsManager", () => {
 		});
 
 		await expect(getOAuthCredentialsFromSecretsManager(logger, secretArn)).rejects.toThrow(
-			"oauthClientId and oauthClientSecret must be non-empty strings",
+			"secret must contain oauthClientId and oauthClientSecret as non-empty strings",
 		);
 	});
 
@@ -121,7 +121,7 @@ describe("getOAuthCredentialsFromSecretsManager", () => {
 		});
 
 		await expect(getOAuthCredentialsFromSecretsManager(logger, secretArn)).rejects.toThrow(
-			"oauthClientId and oauthClientSecret must be non-empty strings",
+			"secret must contain oauthClientId and oauthClientSecret as non-empty strings",
 		);
 	});
 
@@ -168,6 +168,9 @@ describe("getOAuthCredentialsFromSecretsManager", () => {
 		const invalidArn = "invalid-arn";
 
 		await expect(getOAuthCredentialsFromSecretsManager(logger, invalidArn)).rejects.toThrow(
+			"failed to retrieve OAuth credentials from Secrets Manager",
+		);
+		await expect(getOAuthCredentialsFromSecretsManager(logger, invalidArn)).rejects.toThrow(
 			"invalid Secrets Manager ARN format",
 		);
 	});
@@ -176,14 +179,17 @@ describe("getOAuthCredentialsFromSecretsManager", () => {
 		const invalidArn = "arn:aws:s3:us-west-2:123456789012:bucket:test-bucket";
 
 		await expect(getOAuthCredentialsFromSecretsManager(logger, invalidArn)).rejects.toThrow(
+			"failed to retrieve OAuth credentials from Secrets Manager",
+		);
+		await expect(getOAuthCredentialsFromSecretsManager(logger, invalidArn)).rejects.toThrow(
 			"invalid Secrets Manager ARN format",
 		);
 	});
 
-	it("should handle numeric values converted to strings", async () => {
+	it("should reject numeric oauthClientId", async () => {
 		const secretArn = "arn:aws:secretsmanager:us-west-2:123456789012:secret:test-secret";
 		const mockSecretValue = {
-			oauthClientId: 12345, // numeric value
+			oauthClientId: 12345, // numeric value - should be rejected
 			oauthClientSecret: "test-client-secret",
 		};
 
@@ -191,9 +197,24 @@ describe("getOAuthCredentialsFromSecretsManager", () => {
 			SecretString: JSON.stringify(mockSecretValue),
 		});
 
-		const result = await getOAuthCredentialsFromSecretsManager(logger, secretArn);
+		await expect(getOAuthCredentialsFromSecretsManager(logger, secretArn)).rejects.toThrow(
+			"secret must contain oauthClientId and oauthClientSecret as non-empty strings",
+		);
+	});
 
-		expect(result.oauthClientId).toBe("12345");
-		expect(result.oauthClientSecret).toBe("test-client-secret");
+	it("should reject numeric oauthClientSecret", async () => {
+		const secretArn = "arn:aws:secretsmanager:us-west-2:123456789012:secret:test-secret";
+		const mockSecretValue = {
+			oauthClientId: "test-client-id",
+			oauthClientSecret: 67890, // numeric value - should be rejected
+		};
+
+		mockSend.mockResolvedValueOnce({
+			SecretString: JSON.stringify(mockSecretValue),
+		});
+
+		await expect(getOAuthCredentialsFromSecretsManager(logger, secretArn)).rejects.toThrow(
+			"secret must contain oauthClientId and oauthClientSecret as non-empty strings",
+		);
 	});
 });

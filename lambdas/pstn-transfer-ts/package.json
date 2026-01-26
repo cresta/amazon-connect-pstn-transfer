@@ -10,7 +10,7 @@
 		"test": "jest",
 		"test:watch": "jest --watch",
 		"package": "npm run package:bundle",
-		"package:bundle": "VERSION=$(cat ../../VERSION | tr -d '[:space:]') && esbuild src/handler.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/handler.js --external:aws-lambda --define:__VERSION__=\\\"$VERSION\\\" --minify && zip -j ../aws-lambda-connect-pstn-transfer-ts.zip dist/handler.js",
+		"package:bundle": "VERSION=$(cat ../../VERSION | tr -d '[:space:]') && esbuild src/handler.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/handler.js --external:aws-lambda --external:@aws-sdk/* --define:__VERSION__=\\\"$VERSION\\\" --minify && zip -j ../aws-lambda-connect-pstn-transfer-ts.zip dist/handler.js",
 		"lint": "eslint src",
 		"lint:fix": "eslint src --fix",
 		"format": "prettier --write \"src/**/*.{ts,tsx,json}\"",

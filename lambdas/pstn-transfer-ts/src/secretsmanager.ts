@@ -18,10 +18,9 @@ export async function getOAuthCredentialsFromSecretsManager(
 	logger: Logger,
 	secretArn: string,
 ): Promise<OAuthCredentials> {
-	const region = extractRegionFromSecretArn(secretArn);
-
 	// Use AWS SDK v3 client (available in Lambda runtime)
 	try {
+		const region = extractRegionFromSecretArn(secretArn);
 		const client = new SecretsManagerClient({ region });
 		const command = new GetSecretValueCommand({ SecretId: secretArn });
 
@@ -42,11 +41,19 @@ export async function getOAuthCredentialsFromSecretsManager(
 			throw new Error("secret must contain oauthClientId and oauthClientSecret fields");
 		}
 
-		const oauthClientId = String(secretValue.oauthClientId);
-		const oauthClientSecret = String(secretValue.oauthClientSecret);
+		// Extract oauthClientId and oauthClientSecret - must be strings (reject numeric/other types)
+		const oauthClientId = secretValue.oauthClientId;
+		const oauthClientSecret = secretValue.oauthClientSecret;
 
-		if (!oauthClientId || !oauthClientSecret) {
-			throw new Error("oauthClientId and oauthClientSecret must be non-empty strings");
+		if (
+			typeof oauthClientId !== "string" ||
+			typeof oauthClientSecret !== "string" ||
+			oauthClientId === "" ||
+			oauthClientSecret === ""
+		) {
+			throw new Error(
+				"secret must contain oauthClientId and oauthClientSecret as non-empty strings",
+			);
 		}
 
 		logger.debugf("Successfully retrieved OAuth credentials from Secrets Manager");
