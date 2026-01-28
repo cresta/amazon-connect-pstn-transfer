@@ -12,6 +12,7 @@ import { getOAuthCredentialsFromSecretsManager } from "./secretsmanager.js";
 import {
 	buildAPIDomainFromRegion,
 	extractRegionFromDomain,
+	getAuthRegion,
 	getFromEventParameterOrEnv,
 	parseVirtualAgentName,
 	validateDomain,
@@ -35,9 +36,25 @@ export class DefaultHandlerService implements HandlerService {
 	async handle(signal: AbortSignal, event: ConnectEvent): Promise<ConnectResponse> {
 		this.logger.debugf("Received event: %+v", event);
 
-		// Extract region first - from region parameter or apiDomain (deprecated)
+		// Extract region first - from region parameter or apiDomain
 		const regionParam = getFromEventParameterOrEnv(event, "region", "");
-		const apiDomainParam = getFromEventParameterOrEnv(event, "apiDomain", ""); // Deprecated: use region instead
+		const apiDomainParam = getFromEventParameterOrEnv(event, "apiDomain", "");
+		const authDomainParam = getFromEventParameterOrEnv(event, "authDomain", "");
+
+		// Get OAuth credentials early to check if OAuth will be used for validation
+		const oauthSecretArnCheck = getFromEventParameterOrEnv(event, "oauthSecretArn", "");
+		const oauthClientIDCheck = getFromEventParameterOrEnv(event, "oauthClientId", "");
+		const oauthClientSecretCheck = getFromEventParameterOrEnv(event, "oauthClientSecret", "");
+
+		// Validate that apiDomain and authDomain are used together (only when OAuth is used)
+		// If using API key, apiDomain alone is fine
+		const willUseOAuth =
+			oauthSecretArnCheck !== "" || (oauthClientIDCheck !== "" && oauthClientSecretCheck !== "");
+		if (willUseOAuth) {
+			if ((apiDomainParam && !authDomainParam) || (!apiDomainParam && authDomainParam)) {
+				throw new Error("apiDomain and authDomain must be provided together");
+			}
+		}
 
 		let region: string;
 		if (regionParam) {
@@ -57,7 +74,12 @@ export class DefaultHandlerService implements HandlerService {
 		// Calculate apiDomain from region if not provided, otherwise use provided apiDomain
 		let domain: string;
 		if (apiDomainParam) {
-			domain = apiDomainParam;
+			// Add https:// prefix if not present
+			if (!apiDomainParam.startsWith("http://") && !apiDomainParam.startsWith("https://")) {
+				domain = "https://" + apiDomainParam;
+			} else {
+				domain = apiDomainParam;
+			}
 		} else {
 			domain = buildAPIDomainFromRegion(region);
 		}
@@ -68,6 +90,24 @@ export class DefaultHandlerService implements HandlerService {
 		} catch (err) {
 			const errorMessage = err instanceof Error ? err.message : String(err);
 			throw new Error(`invalid domain: ${errorMessage}`);
+		}
+
+		// Process authDomain if provided
+		let authDomain: string = "";
+		if (authDomainParam) {
+			// Add https:// prefix if not present
+			if (!authDomainParam.startsWith("http://") && !authDomainParam.startsWith("https://")) {
+				authDomain = "https://" + authDomainParam;
+			} else {
+				authDomain = authDomainParam;
+			}
+			// Validate authDomain to prevent injection attacks
+			try {
+				validateDomain(authDomain);
+			} catch (err) {
+				const errorMessage = err instanceof Error ? err.message : String(err);
+				throw new Error(`invalid authDomain: ${errorMessage}`);
+			}
 		}
 
 		const action = getFromEventParameterOrEnv(event, "action", "");
@@ -136,9 +176,18 @@ export class DefaultHandlerService implements HandlerService {
 
 		if (resolvedOAuthClientID && resolvedOAuthClientSecret) {
 			// Use OAuth 2 authentication
+			// Determine auth domain: use provided authDomain, or build from region
+			let finalAuthDomain: string;
+			if (authDomain) {
+				finalAuthDomain = authDomain;
+			} else {
+				// Build auth domain from region
+				const authRegion = getAuthRegion(region);
+				finalAuthDomain = `https://auth.${authRegion}.cresta.ai`;
+			}
 			this.logger.infof("Using OAuth 2 authentication");
 			authConfig = {
-				region,
+				authDomain: finalAuthDomain,
 				oauthClientID: resolvedOAuthClientID,
 				oauthClientSecret: resolvedOAuthClientSecret,
 				tokenFetcher: this.tokenFetcher,

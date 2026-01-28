@@ -14,12 +14,12 @@ interface CacheEntry {
 class TokenCache {
 	private cache: Map<string, CacheEntry> = new Map();
 
-	private cacheKey(region: string, clientID: string): string {
-		return `pstn-transfer:tokencache:${region}:${clientID}`;
+	private cacheKey(clientID: string): string {
+		return `pstn-transfer:tokencache:${clientID}`;
 	}
 
-	getToken(region: string, clientID: string): string | null {
-		const key = this.cacheKey(region, clientID);
+	getToken(clientID: string): string | null {
+		const key = this.cacheKey(clientID);
 		const entry = this.cache.get(key);
 		if (entry?.token && new Date() < entry.expiresAt) {
 			return entry.token;
@@ -27,8 +27,8 @@ class TokenCache {
 		return null;
 	}
 
-	setToken(region: string, clientID: string, token: string, expiresInSeconds: number): void {
-		const key = this.cacheKey(region, clientID);
+	setToken(clientID: string, token: string, expiresInSeconds: number): void {
+		const key = this.cacheKey(clientID);
 		// Skip caching for tokens that are too short-lived (<= 300 seconds)
 		// to avoid setting an expiresAt in the past
 		if (expiresInSeconds <= 300) {
@@ -39,8 +39,8 @@ class TokenCache {
 		this.cache.set(key, { token, expiresAt });
 	}
 
-	clearToken(region: string, clientID: string): void {
-		const key = this.cacheKey(region, clientID);
+	clearToken(clientID: string): void {
+		const key = this.cacheKey(clientID);
 		this.cache.delete(key);
 	}
 }
@@ -50,7 +50,7 @@ const tokenCache = new TokenCache();
 export interface OAuth2TokenFetcher {
 	getToken(
 		signal: AbortSignal,
-		region: string,
+		authDomain: string,
 		clientID: string,
 		clientSecret: string,
 	): Promise<string>;
@@ -71,21 +71,18 @@ export class DefaultOAuth2TokenFetcher implements OAuth2TokenFetcher {
 
 	async getToken(
 		signal: AbortSignal,
-		region: string,
+		authDomain: string,
 		clientID: string,
 		clientSecret: string,
 	): Promise<string> {
-		// Check cache first
-		const cachedToken = tokenCache.getToken(region, clientID);
+		// Check cache first (use clientID as cache key)
+		const cachedToken = tokenCache.getToken(clientID);
 		if (cachedToken) {
 			return cachedToken;
 		}
 
-		// Construct token endpoint URL using the same region
-		// Allow override via environment variable for testing
-		const tokenURL =
-			process.env.AUTH_ENDPOINT_OVERRIDE ||
-			`https://auth.${region}.cresta.ai/v1/oauth/regionalToken`;
+		// Build token URL from authDomain (domain only, append path)
+		const tokenURL = `${authDomain}/v1/oauth/regionalToken`;
 
 		// Prepare JSON payload
 		const payload = {
@@ -123,9 +120,9 @@ export class DefaultOAuth2TokenFetcher implements OAuth2TokenFetcher {
 			throw new Error("missing access_token in token response");
 		}
 
-		// Cache the token
+		// Cache the token (use clientID as cache key)
 		if (tokenResponse.expires_in > 0) {
-			tokenCache.setToken(region, clientID, tokenResponse.access_token, tokenResponse.expires_in);
+			tokenCache.setToken(clientID, tokenResponse.access_token, tokenResponse.expires_in);
 		}
 
 		return tokenResponse.access_token;

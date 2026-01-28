@@ -16,7 +16,7 @@ export interface HTTPClient {
 
 export interface AuthConfig {
 	apiKey?: string; // Deprecated
-	region?: string;
+	authDomain?: string; // Auth domain without path (e.g., "https://auth.us-west-2-prod.cresta.ai")
 	oauthClientID?: string;
 	oauthClientSecret?: string;
 	tokenFetcher?: OAuth2TokenFetcher;
@@ -235,13 +235,13 @@ export class RetryHTTPClient implements HTTPClient {
 			if (!this.authConfig.tokenFetcher) {
 				throw new Error("tokenFetcher is required for OAuth authentication");
 			}
-			if (!this.authConfig.region) {
-				throw new Error("region is required for OAuth authentication");
+			if (!this.authConfig.authDomain) {
+				throw new Error("authDomain is required for OAuth authentication");
 			}
 
 			const token = await this.authConfig.tokenFetcher.getToken(
 				request.signal ?? new AbortController().signal,
-				this.authConfig.region,
+				this.authConfig.authDomain,
 				this.authConfig.oauthClientID,
 				this.authConfig.oauthClientSecret,
 			);

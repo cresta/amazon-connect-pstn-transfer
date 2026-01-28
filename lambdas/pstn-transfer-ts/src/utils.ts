@@ -4,7 +4,7 @@
 
 import type { ConnectEvent } from "./types.js";
 
-const API_DOMAIN_REGEX = /api\.([a-z0-9-]+)\.cresta\.(ai|com)/;
+const API_DOMAIN_REGEX = /api[-.]([a-z0-9-]+)\.cresta\.(ai|com)/;
 const VIRTUAL_AGENT_NAME_REGEX = /^customers\/([^/]+)\/profiles\/([^/]+)\/virtualAgents\/([^/]+)$/;
 
 /**
@@ -87,6 +87,27 @@ export function extractRegionFromDomain(apiDomain: string): string {
 		throw new Error(`could not extract region from domain: ${apiDomain}`);
 	}
 	return matches[1];
+}
+
+/**
+ * getAuthRegion maps a region to its corresponding auth region.
+ * Some custom regions (like chat-prod, voice-prod) map to standard auth regions.
+ * If no mapping exists, the region is returned as-is.
+ */
+export function getAuthRegion(region: string): string {
+	// Map of custom regions to their auth regions
+	const regionToAuthRegion: Record<string, string> = {
+		"chat-prod": "us-west-2-prod", // chat-prod uses us-west-2-prod auth endpoint
+		"voice-prod": "us-west-2-prod", // voice-prod uses us-west-2-prod auth endpoint
+	};
+
+	// Check if there's a mapping
+	if (regionToAuthRegion[region]) {
+		return regionToAuthRegion[region];
+	}
+
+	// Return region as-is (no validation - allows for customer-specific regions)
+	return region;
 }
 
 /**

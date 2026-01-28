@@ -264,6 +264,18 @@ func (s *UtilsTestSuite) TestExtractRegionFromDomain() {
 			wantErr: false,
 		},
 		{
+			name:    "valid domain with customer-profile region",
+			domain:  "https://api-customer-profile.cresta.com",
+			want:    "customer-profile",
+			wantErr: false,
+		},
+		{
+			name:    "valid domain with customer-profile region without protocol",
+			domain:  "api-customer-profile.cresta.com",
+			want:    "customer-profile",
+			wantErr: false,
+		},
+		{
 			name:    "invalid domain format",
 			domain:  "https://invalid-domain.com",
 			want:    "",
@@ -424,6 +436,65 @@ func (s *UtilsTestSuite) TestValidatePathSegment() {
 			} else {
 				s.NoError(err)
 			}
+		})
+	}
+}
+
+func (s *UtilsTestSuite) TestGetAuthRegion() {
+	tests := []struct {
+		name        string
+		region      string
+		want        string
+		description string
+	}{
+		{
+			name:        "chat-prod maps to us-west-2-prod",
+			region:      "chat-prod",
+			want:        "us-west-2-prod",
+			description: "chat-prod should map to us-west-2-prod auth endpoint",
+		},
+		{
+			name:        "voice-prod maps to us-west-2-prod",
+			region:      "voice-prod",
+			want:        "us-west-2-prod",
+			description: "voice-prod should map to us-west-2-prod auth endpoint",
+		},
+		{
+			name:        "valid auth region returns as-is",
+			region:      "us-west-2-prod",
+			want:        "us-west-2-prod",
+			description: "valid auth regions should be returned as-is",
+		},
+		{
+			name:        "us-east-1-prod returns as-is",
+			region:      "us-east-1-prod",
+			want:        "us-east-1-prod",
+			description: "us-east-1-prod is a valid auth region",
+		},
+		{
+			name:        "chat-staging returns as-is",
+			region:      "chat-staging",
+			want:        "chat-staging",
+			description: "chat-staging is a valid auth region",
+		},
+		{
+			name:        "unknown custom region returns as-is",
+			region:      "customer-profile",
+			want:        "customer-profile",
+			description: "unknown custom regions are returned as-is (may need explicit mapping)",
+		},
+		{
+			name:        "customer-profile returns as-is",
+			region:      "customer-profile",
+			want:        "customer-profile",
+			description: "customer-profile is returned as-is (may need explicit mapping)",
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			got := GetAuthRegion(tt.region)
+			s.Equal(tt.want, got, tt.description)
 		})
 	}
 }

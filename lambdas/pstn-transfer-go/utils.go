@@ -12,8 +12,15 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 )
 
-var apiDomainRegex = regexp.MustCompile(`api\.([a-z0-9-]+)\.cresta\.(ai|com)`)
-var virtualAgentNameRegex = regexp.MustCompile(`^customers/([^/]+)/profiles/([^/]+)/virtualAgents/([^/]+)$`)
+var (
+	apiDomainRegex        = regexp.MustCompile(`api[-.]([a-z0-9-]+)\.cresta\.(ai|com)`)
+	virtualAgentNameRegex = regexp.MustCompile(`^customers/([^/]+)/profiles/([^/]+)/virtualAgents/([^/]+)$`)
+
+	regionToAuthRegion = map[string]string{
+		"chat-prod":  "us-west-2-prod", // chat-prod uses us-west-2-prod auth endpoint
+		"voice-prod": "us-west-2-prod", // voice-prod uses us-west-2-prod auth endpoint
+	}
+)
 
 func GetFromEventParameterOrEnv(event events.ConnectEvent, key, defaultValue string) string {
 	if value, ok := event.Details.Parameters[key]; ok {
@@ -63,6 +70,15 @@ func ExtractRegionFromDomain(apiDomain string) (string, error) {
 		return "", fmt.Errorf("could not extract region from domain: %s", apiDomain)
 	}
 	return matches[1], nil
+}
+
+// GetAuthRegion maps a region to its corresponding auth region.
+// If no mapping exists, the region is returned as-is.
+func GetAuthRegion(region string) string {
+	if authRegion, ok := regionToAuthRegion[region]; ok {
+		return authRegion
+	}
+	return region
 }
 
 // GetIntFromEnv retrieves an integer from environment variable or returns default.

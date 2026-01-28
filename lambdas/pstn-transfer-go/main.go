@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -39,9 +40,24 @@ func (s *HandlerService) Handle(ctx context.Context, event events.ConnectEvent) 
 	var result *events.ConnectResponse
 	var err error
 
-	// Extract region first - from region parameter or apiDomain (deprecated)
+	// Extract region first - from region parameter or apiDomain
 	regionParam := GetFromEventParameterOrEnv(event, "region", "")
-	apiDomainParam := GetFromEventParameterOrEnv(event, "apiDomain", "") // Deprecated: use region instead
+	apiDomainParam := GetFromEventParameterOrEnv(event, "apiDomain", "")
+	authDomainParam := GetFromEventParameterOrEnv(event, "authDomain", "")
+
+	// Get OAuth credentials early to check if OAuth will be used for validation
+	oauthSecretArnCheck := GetFromEventParameterOrEnv(event, "oauthSecretArn", "")
+	oauthClientIDCheck := GetFromEventParameterOrEnv(event, "oauthClientId", "")
+	oauthClientSecretCheck := GetFromEventParameterOrEnv(event, "oauthClientSecret", "")
+
+	// Validate that apiDomain and authDomain are used together (only when OAuth is used)
+	// If using API key, apiDomain alone is fine
+	willUseOAuth := oauthSecretArnCheck != "" || (oauthClientIDCheck != "" && oauthClientSecretCheck != "")
+	if willUseOAuth {
+		if (apiDomainParam != "" && authDomainParam == "") || (apiDomainParam == "" && authDomainParam != "") {
+			return nil, fmt.Errorf("apiDomain and authDomain must be provided together")
+		}
+	}
 
 	var region string
 	if regionParam != "" {
@@ -62,7 +78,12 @@ func (s *HandlerService) Handle(ctx context.Context, event events.ConnectEvent) 
 	// Calculate apiDomain from region if not provided, otherwise use provided apiDomain
 	var domain string
 	if apiDomainParam != "" {
-		domain = apiDomainParam
+		// Add https:// prefix if not present
+		if !strings.HasPrefix(apiDomainParam, "http://") && !strings.HasPrefix(apiDomainParam, "https://") {
+			domain = "https://" + apiDomainParam
+		} else {
+			domain = apiDomainParam
+		}
 	} else {
 		domain = BuildAPIDomainFromRegion(region)
 	}
@@ -70,6 +91,21 @@ func (s *HandlerService) Handle(ctx context.Context, event events.ConnectEvent) 
 	// Validate domain to prevent injection attacks
 	if err := ValidateDomain(domain); err != nil {
 		return nil, fmt.Errorf("invalid domain: %v", err)
+	}
+
+	// Process authDomain if provided
+	var authDomain string
+	if authDomainParam != "" {
+		// Add https:// prefix if not present
+		if !strings.HasPrefix(authDomainParam, "http://") && !strings.HasPrefix(authDomainParam, "https://") {
+			authDomain = "https://" + authDomainParam
+		} else {
+			authDomain = authDomainParam
+		}
+		// Validate authDomain to prevent injection attacks
+		if err := ValidateDomain(authDomain); err != nil {
+			return nil, fmt.Errorf("invalid authDomain: %v", err)
+		}
 	}
 
 	action := GetFromEventParameterOrEnv(event, "action", "")
@@ -125,9 +161,18 @@ func (s *HandlerService) Handle(ctx context.Context, event events.ConnectEvent) 
 
 	if resolvedOAuthClientID != "" && resolvedOAuthClientSecret != "" {
 		// Use OAuth 2 authentication
+		// Determine auth domain: use provided authDomain, or build from region
+		var finalAuthDomain string
+		if authDomain != "" {
+			finalAuthDomain = authDomain
+		} else {
+			// Build auth domain from region
+			authRegion := GetAuthRegion(region)
+			finalAuthDomain = fmt.Sprintf("https://auth.%s.cresta.ai", authRegion)
+		}
 		s.logger.Infof("Using OAuth 2 authentication")
 		authConfig = &AuthConfig{
-			Region:            region,
+			AuthDomain:        finalAuthDomain,
 			OAuthClientID:     resolvedOAuthClientID,
 			OAuthClientSecret: resolvedOAuthClientSecret,
 			TokenFetcher:      s.tokenFetcher,
