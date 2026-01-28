@@ -62,18 +62,10 @@ The function accepts configuration in two ways:
 
 **Example 1: Using standard region with OAuth**
 
-```json
-{
-  "Details": {
-    "Parameters": {
-      "action": "get_pstn_transfer_data",
-      "region": "us-west-2-prod",
-      "oauthClientId": "your-client-id",
-      "oauthClientSecret": "your-client-secret"
-    }
-  }
-}
-```
+Set the following environment variables in your Lambda function configuration:
+
+- `region` = `us-west-2-prod`
+- `oauthSecretArn` = `arn:aws:secretsmanager:us-west-2:123456789012:secret:my-oauth-credentials`
 
 - **API Domain**: `https://api.us-west-2-prod.cresta.com` (built from region)
 - **Auth Domain**: `https://auth.us-west-2-prod.cresta.ai` (built from region)
@@ -81,18 +73,10 @@ The function accepts configuration in two ways:
 
 **Example 2: Using voice-prod region with OAuth**
 
-```json
-{
-  "Details": {
-    "Parameters": {
-      "action": "get_pstn_transfer_data",
-      "region": "voice-prod",
-      "oauthClientId": "your-client-id",
-      "oauthClientSecret": "your-client-secret"
-    }
-  }
-}
-```
+Set the following environment variables in your Lambda function configuration:
+
+- `region` = `voice-prod`
+- `oauthSecretArn` = `arn:aws:secretsmanager:us-west-2:123456789012:secret:my-oauth-credentials`
 
 - **API Domain**: `https://api.voice-prod.cresta.com` (built from region)
 - **Auth Domain**: `https://auth.us-west-2-prod.cresta.ai` (mapped from voice-prod)
@@ -100,19 +84,11 @@ The function accepts configuration in two ways:
 
 **Example 3: Using custom apiDomain with OAuth (requires authDomain)**
 
-```json
-{
-  "Details": {
-    "Parameters": {
-      "action": "get_pstn_transfer_data",
-      "apiDomain": "api-customer-profile.cresta.com",
-      "authDomain": "auth.us-west-2-prod.cresta.ai",
-      "oauthClientId": "your-client-id",
-      "oauthClientSecret": "your-client-secret"
-    }
-  }
-}
-```
+Set the following environment variables in your Lambda function configuration:
+
+- `apiDomain` = `api-customer-profile.cresta.com`
+- `authDomain` = `auth.us-west-2-prod.cresta.ai`
+- `oauthSecretArn` = `arn:aws:secretsmanager:us-west-2:123456789012:secret:my-oauth-credentials`
 
 - **API Domain**: `https://api-customer-profile.cresta.com`
 - **Auth Domain**: `https://auth.us-west-2-prod.cresta.ai`
@@ -120,17 +96,10 @@ The function accepts configuration in two ways:
 
 **Example 4: Using custom apiDomain with API key (authDomain not required)**
 
-```json
-{
-  "Details": {
-    "Parameters": {
-      "action": "get_pstn_transfer_data",
-      "apiDomain": "api-customer-profile.cresta.com",
-      "apiKey": "your-api-key"
-    }
-  }
-}
-```
+Set the following environment variables in your Lambda function configuration:
+
+- `apiDomain` = `api-customer-profile.cresta.com`
+- `apiKey` = `your-api-key`
 
 - **API Domain**: `https://api-customer-profile.cresta.com`
 - **Auth Domain**: Not used (API key authentication doesn't require OAuth endpoints)
