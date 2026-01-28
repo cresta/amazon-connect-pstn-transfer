@@ -455,7 +455,7 @@ func (s *HTTPClientTestSuite) TestRetryHTTPClient_getAuthHeader_OAuth2() {
 		{
 			name: "successful OAuth 2 token fetch",
 			authConfig: &AuthConfig{
-				Region:            "us-west-2-prod",
+				AuthDomain:        "https://auth.us-west-2-prod.cresta.ai",
 				OAuthClientID:     "test-client-id",
 				OAuthClientSecret: "test-client-secret",
 				TokenFetcher: &mockTokenFetcher{
@@ -470,7 +470,7 @@ func (s *HTTPClientTestSuite) TestRetryHTTPClient_getAuthHeader_OAuth2() {
 		{
 			name: "OAuth 2 token fetch error",
 			authConfig: &AuthConfig{
-				Region:            "us-west-2-prod",
+				AuthDomain:        "https://auth.us-west-2-prod.cresta.ai",
 				OAuthClientID:     "test-client-id",
 				OAuthClientSecret: "test-client-secret",
 				TokenFetcher: &mockTokenFetcher{
@@ -484,7 +484,7 @@ func (s *HTTPClientTestSuite) TestRetryHTTPClient_getAuthHeader_OAuth2() {
 		{
 			name: "missing token fetcher",
 			authConfig: &AuthConfig{
-				Region:            "us-west-2-prod",
+				AuthDomain:        "https://auth.us-west-2-prod.cresta.ai",
 				OAuthClientID:     "test-client-id",
 				OAuthClientSecret: "test-client-secret",
 				TokenFetcher:      nil,
@@ -493,9 +493,9 @@ func (s *HTTPClientTestSuite) TestRetryHTTPClient_getAuthHeader_OAuth2() {
 			wantErrMessage: "tokenFetcher is required",
 		},
 		{
-			name: "missing region",
+			name: "missing authDomain",
 			authConfig: &AuthConfig{
-				Region:            "",
+				AuthDomain:        "",
 				OAuthClientID:     "test-client-id",
 				OAuthClientSecret: "test-client-secret",
 				TokenFetcher: &mockTokenFetcher{
@@ -503,7 +503,7 @@ func (s *HTTPClientTestSuite) TestRetryHTTPClient_getAuthHeader_OAuth2() {
 				},
 			},
 			wantErr:        true,
-			wantErrMessage: "region is required",
+			wantErrMessage: "authDomain is required",
 		},
 		{
 			name: "missing OAuth credentials falls back to API key",
@@ -564,15 +564,12 @@ func (s *HTTPClientTestSuite) TestRetryHTTPClient_getAuthHeader_OAuth2_Caching()
 	defer server.Close()
 
 	// Create a token fetcher that uses the test server
-	tokenFetcher := &DefaultOAuth2TokenFetcher{
-		client: http.DefaultClient,
-		tokenURL: func(region string) string {
-			return server.URL + "/v1/oauth/regionalToken"
-		},
-	}
+	tokenFetcher := NewOAuth2TokenFetcher()
+	tokenFetcher.client = http.DefaultClient
 
+	authDomain := server.URL
 	authConfig := &AuthConfig{
-		Region:            "us-west-2-prod",
+		AuthDomain:        authDomain,
 		OAuthClientID:     "test-client-id",
 		OAuthClientSecret: "test-client-secret",
 		TokenFetcher:      tokenFetcher,
@@ -586,7 +583,7 @@ func (s *HTTPClientTestSuite) TestRetryHTTPClient_getAuthHeader_OAuth2_Caching()
 	ctx := context.Background()
 
 	// Clear cache before test
-	tokenCache.ClearToken("us-west-2-prod", "test-client-id")
+	tokenCache.ClearToken("test-client-id")
 
 	// First call should fetch token from server
 	header1, err := client.getAuthHeader(ctx)
@@ -611,7 +608,7 @@ func (s *HTTPClientTestSuite) TestRetryHTTPClient_Do_AddsAuthHeader() {
 		{
 			name: "OAuth 2 auth header added to request",
 			authConfig: &AuthConfig{
-				Region:            "us-west-2-prod",
+				AuthDomain:        "https://auth.us-west-2-prod.cresta.ai",
 				OAuthClientID:     "test-client-id",
 				OAuthClientSecret: "test-client-secret",
 				TokenFetcher: &mockTokenFetcher{
@@ -642,7 +639,7 @@ func (s *HTTPClientTestSuite) TestRetryHTTPClient_Do_AddsAuthHeader() {
 
 			// Clear cache before test
 			if tt.authConfig != nil && tt.authConfig.OAuthClientID != "" {
-				tokenCache.ClearToken(tt.authConfig.Region, tt.authConfig.OAuthClientID)
+				tokenCache.ClearToken(tt.authConfig.OAuthClientID)
 			}
 
 			client := NewRetryHTTPClient(WithAuth(tt.authConfig))
@@ -666,7 +663,7 @@ func (s *HTTPClientTestSuite) TestRetryHTTPClient_Do_DoesNotOverrideExistingAuth
 	defer server.Close()
 
 	authConfig := &AuthConfig{
-		Region:            "us-west-2-prod",
+		AuthDomain:        "https://auth.us-west-2-prod.cresta.ai/v1/oauth/regionalToken",
 		OAuthClientID:     "test-client-id",
 		OAuthClientSecret: "test-client-secret",
 		TokenFetcher: &mockTokenFetcher{
@@ -675,7 +672,7 @@ func (s *HTTPClientTestSuite) TestRetryHTTPClient_Do_DoesNotOverrideExistingAuth
 	}
 
 	// Clear cache before test
-	tokenCache.ClearToken("us-west-2-prod", "test-client-id")
+	tokenCache.ClearToken("test-client-id")
 
 	client := NewRetryHTTPClient(WithAuth(authConfig))
 	req, _ := http.NewRequest("GET", server.URL, nil)

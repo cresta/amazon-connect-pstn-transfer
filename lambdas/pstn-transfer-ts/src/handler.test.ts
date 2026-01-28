@@ -238,6 +238,87 @@ describe("HandlerService", () => {
 				"invalid virtual agent name",
 			);
 		});
+
+		it("should successfully handle get_pstn_transfer_data with apiDomain parameter (api-customer-profile.cresta.com)", async () => {
+			const mockResponse: ConnectResponse = {
+				phoneNumber: "+1234567890",
+				dtmfSequence: "1234",
+			};
+
+			(globalThis.fetch as jest.Mock).mockResolvedValueOnce({
+				status: 200,
+				json: async () => mockResponse,
+				arrayBuffer: async () => new TextEncoder().encode(JSON.stringify(mockResponse)),
+			});
+
+			const event: ConnectEvent = {
+				Details: {
+					ContactData: {
+						ContactId: "test-contact-id",
+					},
+					Parameters: {
+						action: "get_pstn_transfer_data",
+						apiKey: "test-api-key",
+						apiDomain: "api-customer-profile.cresta.com",
+						virtualAgentName:
+							"customers/test-customer/profiles/test-profile/virtualAgents/test-agent",
+						// No region parameter - handler should extract "customer-profile" from apiDomain
+					},
+				},
+			};
+
+			const service = new DefaultHandlerService(logger);
+			const controller = new AbortController();
+			const result = await service.handle(controller.signal, event);
+
+			expect(result).toBeDefined();
+			expect(result.phoneNumber).toBe("+1234567890");
+			expect(result.dtmfSequence).toBe("1234");
+		});
+
+		it("should successfully handle get_handoff_data with apiDomain parameter (api-customer-profile.cresta.com)", async () => {
+			const mockHandoffResponse: FetchAIAgentHandoffResponse = {
+				handoff: {
+					conversation: "conversation-id",
+					conversationCorrelationId: "correlation-id",
+					summary: "test summary",
+					transferTarget: "pstn:PSTN1",
+				},
+			};
+
+			(globalThis.fetch as jest.Mock).mockResolvedValueOnce({
+				status: 200,
+				json: async () => mockHandoffResponse,
+				arrayBuffer: async () => new TextEncoder().encode(JSON.stringify(mockHandoffResponse)),
+				text: async () => JSON.stringify(mockHandoffResponse),
+			});
+
+			const event: ConnectEvent = {
+				Details: {
+					ContactData: {
+						ContactId: "test-contact-id",
+					},
+					Parameters: {
+						action: "get_handoff_data",
+						apiKey: "test-api-key",
+						apiDomain: "api-customer-profile.cresta.com",
+						virtualAgentName:
+							"customers/test-customer/profiles/test-profile/virtualAgents/test-agent",
+						// No region parameter - handler should extract "customer-profile" from apiDomain
+					},
+				},
+			};
+
+			const service = new DefaultHandlerService(logger);
+			const controller = new AbortController();
+			const result = await service.handle(controller.signal, event);
+
+			expect(result).toBeDefined();
+			expect(result.handoff_conversation).toBe("conversation-id");
+			expect(result.handoff_conversationCorrelationId).toBe("correlation-id");
+			expect(result.handoff_summary).toBe("test summary");
+			expect(result.handoff_transferTarget).toBe("pstn:PSTN1");
+		});
 	});
 });
 

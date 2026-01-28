@@ -191,7 +191,7 @@ type AuthConfig struct {
 	// APIKey is used for API key authentication (deprecated)
 	APIKey string
 	// OAuth credentials for OAuth 2 authentication
-	Region            string
+	AuthDomain        string // Auth domain without path (e.g., "https://auth.us-west-2-prod.cresta.ai")
 	OAuthClientID     string
 	OAuthClientSecret string
 	// TokenFetcher is used to fetch OAuth tokens
@@ -211,11 +211,11 @@ func (c *retryHTTPClient) getAuthHeader(ctx context.Context) (string, error) {
 		if c.authConfig.TokenFetcher == nil {
 			return "", fmt.Errorf("tokenFetcher is required for OAuth authentication")
 		}
-		if c.authConfig.Region == "" {
-			return "", fmt.Errorf("region is required for OAuth authentication")
+		if c.authConfig.AuthDomain == "" {
+			return "", fmt.Errorf("authDomain is required for OAuth authentication")
 		}
 
-		token, err := c.authConfig.TokenFetcher.GetToken(ctx, c.authConfig.Region, c.authConfig.OAuthClientID, c.authConfig.OAuthClientSecret)
+		token, err := c.authConfig.TokenFetcher.GetToken(ctx, c.authConfig.AuthDomain, c.authConfig.OAuthClientID, c.authConfig.OAuthClientSecret)
 		if err != nil {
 			return "", fmt.Errorf("error fetching OAuth token: %v", err)
 		}

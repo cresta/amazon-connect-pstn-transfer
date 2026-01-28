@@ -7,13 +7,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
-	"os"
 	"sync"
 	"time"
 )
 
-// TokenCache stores OAuth 2 access tokens with expiration, keyed by region and clientID.
+// TokenCache stores OAuth 2 access tokens with expiration, keyed by clientID.
 type TokenCache struct {
 	cache map[string]cacheEntry
 	mu    sync.RWMutex
@@ -28,16 +26,16 @@ var tokenCache = &TokenCache{
 	cache: make(map[string]cacheEntry),
 }
 
-// cacheKey generates a cache key from region and clientID.
-func cacheKey(region, clientID string) string {
-	return fmt.Sprintf("pstn-transfer:tokencache:%s:%s", region, clientID)
+// cacheKey generates a cache key from clientID.
+func cacheKey(clientID string) string {
+	return fmt.Sprintf("pstn-transfer:tokencache:%s", clientID)
 }
 
 // GetCachedToken returns a valid cached token if available, otherwise returns empty string.
-func (tc *TokenCache) GetCachedToken(region, clientID string) string {
+func (tc *TokenCache) GetCachedToken(clientID string) string {
 	tc.mu.RLock()
 	defer tc.mu.RUnlock()
-	key := cacheKey(region, clientID)
+	key := cacheKey(clientID)
 	entry, ok := tc.cache[key]
 	if ok && entry.token != "" && time.Now().Before(entry.expiresAt) {
 		return entry.token
@@ -46,10 +44,10 @@ func (tc *TokenCache) GetCachedToken(region, clientID string) string {
 }
 
 // SetToken caches a token with expiration time.
-func (tc *TokenCache) SetToken(region, clientID, token string, expiresIn time.Duration) {
+func (tc *TokenCache) SetToken(clientID, token string, expiresIn time.Duration) {
 	tc.mu.Lock()
 	defer tc.mu.Unlock()
-	key := cacheKey(region, clientID)
+	key := cacheKey(clientID)
 	// Apply safety buffer but ensure at least some positive cache time
 	safetyBuffer := 5 * time.Minute
 	if expiresIn <= safetyBuffer {
@@ -61,63 +59,44 @@ func (tc *TokenCache) SetToken(region, clientID, token string, expiresIn time.Du
 	}
 }
 
-// ClearToken clears the cached token for a specific region and clientID (useful for testing).
-func (tc *TokenCache) ClearToken(region, clientID string) {
+// ClearToken clears the cached token for a specific clientID (useful for testing).
+func (tc *TokenCache) ClearToken(clientID string) {
 	tc.mu.Lock()
 	defer tc.mu.Unlock()
-	key := cacheKey(region, clientID)
+	key := cacheKey(clientID)
 	delete(tc.cache, key)
 }
 
 // OAuth2TokenFetcher defines the interface for fetching OAuth 2 tokens.
 type OAuth2TokenFetcher interface {
-	GetToken(ctx context.Context, region, clientID, clientSecret string) (string, error)
+	GetToken(ctx context.Context, authDomain, clientID, clientSecret string) (string, error)
 }
 
 // DefaultOAuth2TokenFetcher implements OAuth2TokenFetcher using HTTP client.
 type DefaultOAuth2TokenFetcher struct {
-	logger   *Logger
-	client   HTTPClient
-	tokenURL func(region string) string
+	logger *Logger
+	client HTTPClient
 }
 
 // NewOAuth2TokenFetcher creates a new OAuth2TokenFetcher with default configuration.
-// Region should include the suffix (e.g., "us-west-2-prod" or "us-west-2-staging").
 // Uses a retry-enabled HTTP client.
 func NewOAuth2TokenFetcher() *DefaultOAuth2TokenFetcher {
 	logger := NewLogger()
 	return &DefaultOAuth2TokenFetcher{
 		logger: logger,
 		client: NewRetryHTTPClient(WithLogger(logger)),
-		tokenURL: func(region string) string {
-			// Allow override via environment variable for testing
-			if override := os.Getenv("AUTH_ENDPOINT_OVERRIDE"); override != "" {
-				// Validate override URL to prevent credential exfiltration
-				parsed, err := url.Parse(override)
-				if err != nil {
-					logger.Warnf("invalid AUTH_ENDPOINT_OVERRIDE URL: %v", err)
-					// Fall through to default URL
-				} else if parsed.Scheme != "https" && parsed.Scheme != "http" {
-					logger.Warnf("AUTH_ENDPOINT_OVERRIDE must use http/https scheme, got: %s", parsed.Scheme)
-					// Fall through to default URL
-				} else {
-					return override
-				}
-			}
-			return fmt.Sprintf("https://auth.%s.cresta.ai/v1/oauth/regionalToken", region)
-		},
 	}
 }
 
 // GetToken fetches an OAuth 2 access token using client credentials flow.
-func (f *DefaultOAuth2TokenFetcher) GetToken(ctx context.Context, region, clientID, clientSecret string) (string, error) {
-	// Check cache first
-	if cachedToken := tokenCache.GetCachedToken(region, clientID); cachedToken != "" {
+func (f *DefaultOAuth2TokenFetcher) GetToken(ctx context.Context, authDomain, clientID, clientSecret string) (string, error) {
+	// Check cache first (use clientID as cache key)
+	if cachedToken := tokenCache.GetCachedToken(clientID); cachedToken != "" {
 		return cachedToken, nil
 	}
 
-	// Construct token endpoint URL using the same region
-	tokenURL := f.tokenURL(region)
+	// Build token URL from authDomain (domain only, append path)
+	tokenURL := authDomain + "/v1/oauth/regionalToken"
 
 	// Prepare JSON payload
 	payload := map[string]string{
@@ -165,9 +144,9 @@ func (f *DefaultOAuth2TokenFetcher) GetToken(ctx context.Context, region, client
 		return "", fmt.Errorf("missing access_token in token response")
 	}
 
-	// Cache the token
+	// Cache the token (use clientID as cache key)
 	if tokenResponse.ExpiresIn > 0 {
-		tokenCache.SetToken(region, clientID, tokenResponse.AccessToken, time.Duration(tokenResponse.ExpiresIn)*time.Second)
+		tokenCache.SetToken(clientID, tokenResponse.AccessToken, time.Duration(tokenResponse.ExpiresIn)*time.Second)
 	} else {
 		if f.logger != nil {
 			f.logger.Errorf("token response has invalid expires_in (value: %d), token will not be cached", tokenResponse.ExpiresIn)

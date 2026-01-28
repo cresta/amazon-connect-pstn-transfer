@@ -95,6 +95,16 @@ if [ -z "$region" ]; then
     region="us-west-2-prod"
 fi
 
+read -p "Enter API Domain (optional, e.g., api-customer-profile.cresta.com, must be used with authDomain): " api_domain
+
+read -p "Enter Auth Domain (optional, e.g., auth.us-west-2-prod.cresta.ai, must be used with apiDomain): " auth_domain
+
+# Validate that apiDomain and authDomain are used together
+if ([ -n "$api_domain" ] && [ -z "$auth_domain" ]) || ([ -z "$api_domain" ] && [ -n "$auth_domain" ]); then
+    echo "Error: apiDomain and authDomain must be provided together"
+    exit 1
+fi
+
 read -p "Enter S3 bucket name for Lambda code (required): " s3_bucket
 if [ -z "$s3_bucket" ]; then
     echo "Error: S3 bucket name is required"
@@ -153,6 +163,8 @@ PARAMS=(
     "ParameterKey=OAuthClientSecret,ParameterValue=$oauth_client_secret"
     "ParameterKey=VirtualAgentName,ParameterValue=$virtual_agent_name"
     "ParameterKey=Region,ParameterValue=$region"
+    "ParameterKey=ApiDomain,ParameterValue=${api_domain:-}"
+    "ParameterKey=AuthDomain,ParameterValue=${auth_domain:-}"
     "ParameterKey=CodeS3Bucket,ParameterValue=$s3_bucket"
     "ParameterKey=CodeS3Key,ParameterValue=$code_s3_key"
     "ParameterKey=FunctionName,ParameterValue=$function_name"

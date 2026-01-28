@@ -34,8 +34,18 @@ Parameters:
 
   Region:
     Type: String
-    Description: "AWS region (e.g. us-west-2-prod, chat-prod, voice-prod, us-east-1-prod, schwab-prod, ca-central-1-prod, ap-southeast-2-prod, eu-west-2-prod). Defaults to us-west-2-prod"
+    Description: "AWS region (e.g. us-west-2-prod, chat-prod, voice-prod, us-east-1-prod, ca-central-1-prod, ap-southeast-2-prod, eu-west-2-prod). Required if ApiDomain is not provided. Defaults to us-west-2-prod"
     Default: "us-west-2-prod"
+
+  ApiDomain:
+    Type: String
+    Description: "API domain without protocol prefix (e.g., api-customer-profile.cresta.com). Optional. If provided, the region will be extracted from the domain."
+    Default: ""
+
+  AuthDomain:
+    Type: String
+    Description: "OAuth authentication domain without protocol prefix (e.g., auth.us-west-2-prod.cresta.ai). Optional. Must be provided together with ApiDomain."
+    Default: ""
 
   CodeS3Bucket:
     Type: String
@@ -71,6 +81,15 @@ Rules:
             - !Not [!Equals [!Ref OAuthClientId, ""]]
             - !Not [!Equals [!Ref OAuthClientSecret, ""]]
         AssertDescription: "Either OAuthSecretArn or both OAuthClientId and OAuthClientSecret must be provided"
+      - Assert: !Or
+          - !Equals [!Ref ApiDomain, ""]
+          - !Not [!Equals [!Ref AuthDomain, ""]]
+          - !And
+            - !Equals [!Ref OAuthSecretArn, ""]
+            - !Or
+              - !Equals [!Ref OAuthClientId, ""]
+              - !Equals [!Ref OAuthClientSecret, ""]
+        AssertDescription: "When ApiDomain is provided with OAuth credentials (OAuthSecretArn or OAuthClientId/OAuthClientSecret), AuthDomain must also be provided"
 
 Resources:
   LambdaExecutionRole:
@@ -134,6 +153,8 @@ Resources:
           oauthClientId: !Ref OAuthClientId
           oauthClientSecret: !Ref OAuthClientSecret
           region: !Ref Region
+          apiDomain: !Ref ApiDomain
+          authDomain: !Ref AuthDomain
           virtualAgentName: !Ref VirtualAgentName
       Tags:
         - Key: Name

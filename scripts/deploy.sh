@@ -32,6 +32,8 @@ if [ -f "var.json" ]; then
     oauth_client_secret=$(extract_json_value "oauthClientSecret" "var.json")
     virtual_agent_name=$(extract_json_value "virtualAgentName" "var.json")
     region=$(extract_json_value "region" "var.json")
+    api_domain=$(extract_json_value "apiDomain" "var.json")
+    auth_domain=$(extract_json_value "authDomain" "var.json")
     
     # Set default if region is empty
     if [ -z "$region" ]; then
@@ -48,6 +50,12 @@ if [ -f "var.json" ]; then
     fi
     echo "  Virtual Agent Name: $virtual_agent_name"
     echo "  Region: $region"
+    if [ -n "$api_domain" ]; then
+        echo "  API Domain: $api_domain"
+    fi
+    if [ -n "$auth_domain" ]; then
+        echo "  Auth Domain: $auth_domain"
+    fi
     echo ""
     
     # Ask for confirmation
@@ -89,6 +97,16 @@ if [ -f "var.json" ]; then
         read -p "Enter Region (optional, default: us-west-2-prod): " region
         if [ -z "$region" ]; then
             region="us-west-2-prod"
+        fi
+        
+        read -p "Enter API Domain (optional, e.g., api-customer-profile.cresta.com, must be used with authDomain): " api_domain
+        
+        read -p "Enter Auth Domain (optional, e.g., auth.us-west-2-prod.cresta.ai, must be used with apiDomain): " auth_domain
+        
+        # Validate that apiDomain and authDomain are used together
+        if ([ -n "$api_domain" ] && [ -z "$auth_domain" ]) || ([ -z "$api_domain" ] && [ -n "$auth_domain" ]); then
+            echo "Error: apiDomain and authDomain must be provided together"
+            exit 1
         fi
     fi
 else
@@ -136,6 +154,16 @@ else
     if [ -z "$region" ]; then
         region="us-west-2-prod"
     fi
+    
+    read -p "Enter API Domain (optional, e.g., api-customer-profile.cresta.com, must be used with authDomain): " api_domain
+    
+    read -p "Enter Auth Domain (optional, e.g., auth.us-west-2-prod.cresta.ai, must be used with apiDomain): " auth_domain
+    
+    # Validate that apiDomain and authDomain are used together
+    if ([ -n "$api_domain" ] && [ -z "$auth_domain" ]) || ([ -z "$api_domain" ] && [ -n "$auth_domain" ]); then
+        echo "Error: apiDomain and authDomain must be provided together"
+        exit 1
+    fi
 fi
 
 # Validate required fields
@@ -162,7 +190,9 @@ if command -v jq &> /dev/null; then
         --arg oauthClientSecret "${oauth_client_secret:-}" \
         --arg virtualAgentName "$virtual_agent_name" \
         --arg region "$region" \
-        '{oauthSecretArn: $oauthSecretArn, oauthClientId: $oauthClientId, oauthClientSecret: $oauthClientSecret, virtualAgentName: $virtualAgentName, region: $region}' > var.json
+        --arg apiDomain "${api_domain:-}" \
+        --arg authDomain "${auth_domain:-}" \
+        '{oauthSecretArn: $oauthSecretArn, oauthClientId: $oauthClientId, oauthClientSecret: $oauthClientSecret, virtualAgentName: $virtualAgentName, region: $region, apiDomain: $apiDomain, authDomain: $authDomain}' > var.json
 else
     # Fallback to manual JSON creation (basic escaping)
     oauth_secret_arn_escaped=$(echo "${oauth_secret_arn:-}" | sed 's/"/\\"/g')
@@ -170,13 +200,17 @@ else
     oauth_client_secret_escaped=$(echo "${oauth_client_secret:-}" | sed 's/"/\\"/g')
     virtual_agent_name_escaped=$(echo "$virtual_agent_name" | sed 's/"/\\"/g')
     region_escaped=$(echo "$region" | sed 's/"/\\"/g')
+    api_domain_escaped=$(echo "${api_domain:-}" | sed 's/"/\\"/g')
+    auth_domain_escaped=$(echo "${auth_domain:-}" | sed 's/"/\\"/g')
     cat > var.json <<EOF
 {
     "oauthSecretArn": "$oauth_secret_arn_escaped",
     "oauthClientId": "$oauth_client_id_escaped",
     "oauthClientSecret": "$oauth_client_secret_escaped",
     "virtualAgentName": "$virtual_agent_name_escaped",
-    "region": "$region_escaped"
+    "region": "$region_escaped",
+    "apiDomain": "$api_domain_escaped",
+    "authDomain": "$auth_domain_escaped"
 }
 EOF
 fi

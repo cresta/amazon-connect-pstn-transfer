@@ -22,20 +22,17 @@ func TestAuthTestSuite(t *testing.T) {
 func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken() {
 	tests := []struct {
 		name           string
-		apiDomain      string
-		region         string
+		authDomain     string
 		clientID       string
 		clientSecret   string
 		mockResponse   func(w http.ResponseWriter, statusCode int)
 		mockStatusCode int
 		wantErr        bool
 		wantToken      string
-		wantRegion     string
 	}{
 		{
-			name:         "successful token fetch with region parameter",
-			apiDomain:    "https://api.us-west-2-prod.cresta.ai",
-			region:       "us-east-1-prod",
+			name:         "successful token fetch with authDomain",
+			authDomain:   "https://auth.us-east-1-prod.cresta.ai",
 			clientID:     "test-client-id",
 			clientSecret: "test-client-secret",
 			mockResponse: func(w http.ResponseWriter, statusCode int) {
@@ -50,12 +47,10 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken() {
 			mockStatusCode: http.StatusOK,
 			wantErr:        false,
 			wantToken:      "test-access-token",
-			wantRegion:     "us-east-1-prod",
 		},
 		{
-			name:         "successful token fetch with provided region",
-			apiDomain:    "https://api.us-west-2-prod.cresta.ai",
-			region:       "us-west-2-prod",
+			name:         "successful token fetch with different authDomain",
+			authDomain:   "https://auth.us-west-2-prod.cresta.ai",
 			clientID:     "test-client-id",
 			clientSecret: "test-client-secret",
 			mockResponse: func(w http.ResponseWriter, statusCode int) {
@@ -70,12 +65,10 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken() {
 			mockStatusCode: http.StatusOK,
 			wantErr:        false,
 			wantToken:      "test-access-token",
-			wantRegion:     "us-west-2-prod",
 		},
 		{
 			name:         "error response from server",
-			apiDomain:    "https://api.us-west-2-prod.cresta.ai",
-			region:       "",
+			authDomain:   "https://auth.us-west-2-prod.cresta.ai",
 			clientID:     "test-client-id",
 			clientSecret: "test-client-secret",
 			mockResponse: func(w http.ResponseWriter, statusCode int) {
@@ -89,49 +82,8 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken() {
 			wantToken:      "",
 		},
 		{
-			name:         "successful token fetch with region provided",
-			apiDomain:    "https://invalid-domain.com",
-			region:       "us-west-2-prod",
-			clientID:     "test-client-id",
-			clientSecret: "test-client-secret",
-			mockResponse: func(w http.ResponseWriter, statusCode int) {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(statusCode)
-				json.NewEncoder(w).Encode(map[string]any{
-					"access_token": "test-access-token",
-					"token_type":   "Bearer",
-					"expires_in":   3600,
-				})
-			},
-			mockStatusCode: http.StatusOK,
-			wantErr:        false,
-			wantToken:      "test-access-token",
-			wantRegion:     "us-west-2-prod",
-		},
-		{
-			name:         "invalid domain format but region provided",
-			apiDomain:    "https://invalid-domain.com",
-			region:       "us-west-2-prod",
-			clientID:     "test-client-id",
-			clientSecret: "test-client-secret",
-			mockResponse: func(w http.ResponseWriter, statusCode int) {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(statusCode)
-				json.NewEncoder(w).Encode(map[string]any{
-					"access_token": "test-access-token",
-					"token_type":   "Bearer",
-					"expires_in":   3600,
-				})
-			},
-			mockStatusCode: http.StatusOK,
-			wantErr:        false,
-			wantToken:      "test-access-token",
-			wantRegion:     "us-west-2-prod",
-		},
-		{
 			name:         "missing access_token in response",
-			apiDomain:    "https://api.us-west-2-prod.cresta.ai",
-			region:       "us-west-2-prod",
+			authDomain:   "https://auth.us-west-2-prod.cresta.ai",
 			clientID:     "test-client-id",
 			clientSecret: "test-client-secret",
 			mockResponse: func(w http.ResponseWriter, statusCode int) {
@@ -149,8 +101,7 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken() {
 		},
 		{
 			name:         "empty access_token in response",
-			apiDomain:    "https://api.us-west-2-prod.cresta.ai",
-			region:       "us-west-2-prod",
+			authDomain:   "https://auth.us-west-2-prod.cresta.ai",
 			clientID:     "test-client-id",
 			clientSecret: "test-client-secret",
 			mockResponse: func(w http.ResponseWriter, statusCode int) {
@@ -171,7 +122,7 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken() {
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			// Clear cache before each test
-			tokenCache.ClearToken(tt.region, tt.clientID)
+			tokenCache.ClearToken(tt.clientID)
 
 			var server *httptest.Server
 			if tt.mockResponse != nil {
@@ -189,20 +140,16 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken() {
 				defer server.Close()
 			}
 
-			var usedRegion string
-			fetcher := &DefaultOAuth2TokenFetcher{
-				client: http.DefaultClient,
-				tokenURL: func(region string) string {
-					usedRegion = region
-					if server != nil {
-						return server.URL + "/v1/oauth/regionalToken"
-					}
-					return "https://auth." + region + ".cresta.ai/v1/oauth/regionalToken"
-				},
+			fetcher := NewOAuth2TokenFetcher()
+			fetcher.client = http.DefaultClient
+			// Override authDomain to use test server if available
+			authDomain := tt.authDomain
+			if server != nil {
+				authDomain = server.URL
 			}
 
 			ctx := context.Background()
-			got, err := fetcher.GetToken(ctx, tt.region, tt.clientID, tt.clientSecret)
+			got, err := fetcher.GetToken(ctx, authDomain, tt.clientID, tt.clientSecret)
 
 			if tt.wantErr {
 				s.Error(err)
@@ -213,9 +160,6 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken() {
 			}
 			s.NoError(err)
 			s.Equal(tt.wantToken, got)
-			if tt.wantRegion != "" {
-				s.Equal(tt.wantRegion, usedRegion)
-			}
 		})
 	}
 }
@@ -231,32 +175,28 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken_ContextCancellation() {
 	}))
 	defer server.Close()
 
-	fetcher := &DefaultOAuth2TokenFetcher{
-		client: http.DefaultClient,
-		tokenURL: func(region string) string {
-			return server.URL + "/v1/oauth/regionalToken"
-		},
-	}
+	fetcher := NewOAuth2TokenFetcher()
+	fetcher.client = http.DefaultClient
 
-	region := "us-west-2-prod"
+	authDomain := server.URL
 	clientID := "test-client-id"
 	clientSecret := "test-client-secret"
 
 	// Clear cache before test
-	tokenCache.ClearToken(region, clientID)
+	tokenCache.ClearToken(clientID)
 
 	s.Run("context cancelled before request", func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel() // Cancel immediately
 
-		_, err := fetcher.GetToken(ctx, region, clientID, clientSecret)
+		_, err := fetcher.GetToken(ctx, authDomain, clientID, clientSecret)
 		s.Error(err)
 		s.Contains(err.Error(), "context")
 	})
 
 	s.Run("context cancelled during request", func() {
 		// Clear cache to force a new request
-		tokenCache.ClearToken(region, clientID)
+		tokenCache.ClearToken(clientID)
 
 		// Create a server that delays its response
 		slowServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -271,12 +211,10 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken_ContextCancellation() {
 		}))
 		defer slowServer.Close()
 
-		slowFetcher := &DefaultOAuth2TokenFetcher{
-			client: http.DefaultClient,
-			tokenURL: func(region string) string {
-				return slowServer.URL + "/v1/oauth/regionalToken"
-			},
-		}
+		slowFetcher := NewOAuth2TokenFetcher()
+		slowFetcher.client = http.DefaultClient
+
+		slowAuthDomain := slowServer.URL
 
 		ctx, cancel := context.WithCancel(context.Background())
 
@@ -286,7 +224,7 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken_ContextCancellation() {
 			cancel()
 		}()
 
-		_, err := slowFetcher.GetToken(ctx, region, clientID, clientSecret)
+		_, err := slowFetcher.GetToken(ctx, slowAuthDomain, clientID, clientSecret)
 		s.Error(err)
 		// The error should be related to context cancellation
 		s.NotNil(ctx.Err(), "expected context to be cancelled")
@@ -307,30 +245,26 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken_Cache() {
 	}))
 	defer server.Close()
 
-	fetcher := &DefaultOAuth2TokenFetcher{
-		client: http.DefaultClient,
-		tokenURL: func(region string) string {
-			return server.URL + "/v1/oauth/regionalToken"
-		},
-	}
+	fetcher := NewOAuth2TokenFetcher()
+	fetcher.client = http.DefaultClient
 
 	ctx := context.Background()
-	region := "us-west-2-prod"
+	authDomain := server.URL
 	clientID := "client-id"
 	clientSecret := "client-secret"
 
 	// Clear cache before test
-	tokenCache.ClearToken(region, clientID)
+	tokenCache.ClearToken(clientID)
 
 	s.Run("first call hits server", func() {
-		token1, err := fetcher.GetToken(ctx, region, clientID, clientSecret)
+		token1, err := fetcher.GetToken(ctx, authDomain, clientID, clientSecret)
 		s.NoError(err)
 		s.Equal(1, callCount)
 		s.NotEmpty(token1)
 	})
 
 	s.Run("second call uses cache", func() {
-		token2, err := fetcher.GetToken(ctx, region, clientID, clientSecret)
+		token2, err := fetcher.GetToken(ctx, authDomain, clientID, clientSecret)
 		s.NoError(err)
 		s.Equal(1, callCount, "should use cache, not hit server again")
 		s.NotEmpty(token2)
@@ -338,24 +272,25 @@ func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken_Cache() {
 
 	s.Run("different clientID hits server again", func() {
 		callCount = 0
-		tokenCache.ClearToken(region, "different-client-id")
-		_, err := fetcher.GetToken(ctx, region, "different-client-id", clientSecret)
+		tokenCache.ClearToken("different-client-id")
+		_, err := fetcher.GetToken(ctx, authDomain, "different-client-id", clientSecret)
 		s.NoError(err)
 		s.Equal(1, callCount)
 	})
 
-	s.Run("different region hits server again", func() {
+	s.Run("same clientID uses cache regardless of authDomain", func() {
 		callCount = 0
-		tokenCache.ClearToken("us-east-1-prod", clientID)
-		token4, err := fetcher.GetToken(ctx, "us-east-1-prod", clientID, clientSecret)
+		differentAuthDomain := server.URL + "/different"
+		// Same clientID, different authDomain - should use cached token
+		token4, err := fetcher.GetToken(ctx, differentAuthDomain, clientID, clientSecret)
 		s.NoError(err)
-		s.Equal(1, callCount)
+		s.Equal(0, callCount, "should use cache for same clientID")
 		s.NotEmpty(token4)
 	})
 
-	s.Run("same region and clientID uses cache", func() {
+	s.Run("same clientID uses cache", func() {
 		callCount = 0
-		token5, err := fetcher.GetToken(ctx, "us-east-1-prod", clientID, clientSecret)
+		token5, err := fetcher.GetToken(ctx, authDomain, clientID, clientSecret)
 		s.NoError(err)
 		s.Equal(0, callCount, "should use cache")
 		s.NotEmpty(token5)

@@ -232,8 +232,8 @@ export async function executeHandlerScenario(
 	};
 
 	if (useOAuth) {
-		// Use OAuth - override auth endpoint to point to mock server
-		env.AUTH_ENDPOINT_OVERRIDE = `${mockServerURL}/v1/oauth/regionalToken`;
+		// Use OAuth - set authDomain to point to mock server (path will be appended automatically)
+		env.authDomain = mockServerURL;
 		env.oauthClientId = "test-client-id";
 		env.oauthClientSecret = "test-client-secret";
 	} else {
