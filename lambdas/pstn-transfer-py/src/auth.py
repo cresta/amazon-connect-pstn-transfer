@@ -50,13 +50,13 @@ class TokenCache:
         """Set token in cache with expiration"""
         key = self._cache_key(client_id)
 
-        # Skip caching for tokens that are too short-lived (<= 300 seconds)
-        # to avoid setting an expires_at in the past
-        if expires_in_seconds <= 300:
-            return
+        # Apply safety buffer but ensure at least some positive cache time
+        # This matches the Go implementation's adaptive buffer approach
+        safety_buffer = 5 * 60  # 5 minutes in seconds
+        if expires_in_seconds <= safety_buffer:
+            safety_buffer = expires_in_seconds // 2
 
-        # Subtract 5 minute buffer for safety
-        expires_at = time.time() + (expires_in_seconds - 5 * 60)
+        expires_at = time.time() + (expires_in_seconds - safety_buffer)
 
         with self._lock:
             self._cache[key] = CacheEntry(token=token, expires_at=expires_at)

@@ -26,12 +26,31 @@ class TestTokenCache:
         result = cache.get_token("client-id")
         assert result == "test-token"
 
-    def test_skips_short_lived_tokens(self):
-        """Should skip caching tokens with expires_in <= 300"""
+    def test_caches_short_lived_tokens_with_adaptive_buffer(self):
+        """Should cache short-lived tokens with adaptive safety buffer (matching Go)"""
+        import time as time_module
+        from unittest.mock import patch
+
         cache = TokenCache()
-        cache.set_token("client-id", "short-token", 300)
-        result = cache.get_token("client-id")
-        assert result is None
+        initial_time = 1000000.0
+
+        with patch.object(time_module, "time") as mock_time:
+            mock_time.return_value = initial_time
+            # For 300 second token, safety buffer = 300 // 2 = 150
+            # So token should be cached for 150 seconds
+            cache.set_token("client-id", "short-token", 300)
+            result = cache.get_token("client-id")
+            assert result == "short-token"
+
+            # Token should still be valid after 100 seconds
+            mock_time.return_value = initial_time + 100
+            result = cache.get_token("client-id")
+            assert result == "short-token"
+
+            # Token should be expired after 151 seconds (past the 150s cache time)
+            mock_time.return_value = initial_time + 151
+            result = cache.get_token("client-id")
+            assert result is None
 
     def test_returns_none_for_expired_token(self):
         """Should return None for expired token"""
