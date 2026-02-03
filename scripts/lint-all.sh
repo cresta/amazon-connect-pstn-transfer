@@ -89,13 +89,13 @@ if [ -d "lambdas/pstn-transfer-py" ]; then
         else
             # Try ruff directly, fall back to python -m ruff
             if command -v ruff &> /dev/null; then
-                if ruff check src tests; then
+                if ruff check --fix src tests; then
                     echo "✓ Python linting passed"
                 else
                     echo "✗ Python linting failed"
                     LINT_FAILED=1
                 fi
-            elif python3 -m ruff check src tests; then
+            elif python3 -m ruff check --fix src tests; then
                 echo "✓ Python linting passed"
             else
                 echo "✗ Python linting failed"

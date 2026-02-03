@@ -13,9 +13,7 @@ if TYPE_CHECKING:
 from .types import OAuthCredentials
 
 
-def get_oauth_credentials_from_secrets_manager(
-    logger: "Logger", secret_arn: str
-) -> OAuthCredentials:
+def get_oauth_credentials_from_secrets_manager(logger: Logger, secret_arn: str) -> OAuthCredentials:
     """
     Fetches OAuth credentials from AWS Secrets Manager.
     The secret should be a JSON object with oauthClientId and oauthClientSecret fields.

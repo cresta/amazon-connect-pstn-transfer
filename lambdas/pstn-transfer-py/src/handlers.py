@@ -31,8 +31,8 @@ class Handlers:
 
     def __init__(
         self,
-        logger: "Logger",
-        api_client: "CrestaAPIClient",
+        logger: Logger,
+        api_client: CrestaAPIClient,
         domain: str,
         customer_id: str,
         profile_id: str,

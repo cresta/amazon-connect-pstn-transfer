@@ -7,7 +7,7 @@ import time
 import urllib.error
 import urllib.request
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from .utils import get_duration_from_env, get_int_from_env
 
@@ -45,7 +45,7 @@ class AuthConfig:
         auth_domain: str | None = None,
         oauth_client_id: str | None = None,
         oauth_client_secret: str | None = None,
-        token_fetcher: Optional["OAuth2TokenFetcher"] = None,
+        token_fetcher: OAuth2TokenFetcher | None = None,
     ):
         self.api_key = api_key
         self.auth_domain = auth_domain
@@ -80,7 +80,7 @@ class RetryHTTPClient(HTTPClient):
 
     def __init__(
         self,
-        logger: Optional["Logger"] = None,
+        logger: Logger | None = None,
         auth_config: AuthConfig | None = None,
         max_retries: int | None = None,
         base_delay: int | None = None,

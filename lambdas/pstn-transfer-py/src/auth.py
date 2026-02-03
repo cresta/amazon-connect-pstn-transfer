@@ -10,7 +10,7 @@ import urllib.request
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from threading import Lock
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .httpclient import HTTPClient
@@ -92,7 +92,7 @@ class OAuth2TokenFetcher(ABC):
 class DefaultOAuth2TokenFetcher(OAuth2TokenFetcher):
     """Default implementation of OAuth2 token fetcher"""
 
-    def __init__(self, client: Optional["HTTPClient"] = None, logger: Optional["Logger"] = None):
+    def __init__(self, client: HTTPClient | None = None, logger: Logger | None = None):
         from .logger import new_logger
 
         self._logger = logger or new_logger()
