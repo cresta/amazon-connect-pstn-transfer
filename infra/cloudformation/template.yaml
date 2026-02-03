@@ -8,6 +8,7 @@ Parameters:
     AllowedValues:
       - go
       - typescript
+      - python
     Default: go
 
   OAuthSecretArn:
@@ -69,6 +70,8 @@ Parameters:
 
 Conditions:
   IsGoImplementation: !Equals [!Ref LambdaImplementation, "go"]
+  IsTypeScriptImplementation: !Equals [!Ref LambdaImplementation, "typescript"]
+  IsPythonImplementation: !Equals [!Ref LambdaImplementation, "python"]
   UseDefaultCodeS3Key: !Equals [!Ref CodeS3Key, ""]
   UseSecretsManager: !Not [!Equals [!Ref OAuthSecretArn, ""]]
 
@@ -128,11 +131,17 @@ Resources:
       Runtime: !If
         - IsGoImplementation
         - provided.al2023
-        - nodejs24.x
+        - !If
+          - IsPythonImplementation
+          - python3.14
+          - nodejs24.x
       Handler: !If
         - IsGoImplementation
         - bootstrap
-        - handler.handler
+        - !If
+          - IsPythonImplementation
+          - src.handler.handler
+          - handler.handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Timeout: 30
       MemorySize: 256
@@ -143,7 +152,10 @@ Resources:
           - !If
             - IsGoImplementation
             - aws-lambda-connect-pstn-transfer-go.zip
-            - aws-lambda-connect-pstn-transfer-ts.zip
+            - !If
+              - IsPythonImplementation
+              - aws-lambda-connect-pstn-transfer-py.zip
+              - aws-lambda-connect-pstn-transfer-ts.zip
           - !Ref CodeS3Key
       Architectures:
         - arm64

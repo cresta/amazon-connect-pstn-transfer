@@ -16,7 +16,8 @@ TEMPLATE_FILE="$SCRIPT_DIR/template.yaml"
 echo "Select Lambda implementation:"
 echo "1) Go (default)"
 echo "2) TypeScript"
-read -p "Enter choice [1-2] (default: 1): " impl_choice
+echo "3) Python"
+read -p "Enter choice [1-3] (default: 1): " impl_choice
 
 case "$impl_choice" in
     2)
@@ -24,6 +25,12 @@ case "$impl_choice" in
         CODE_ZIP="aws-lambda-connect-pstn-transfer-ts.zip"
         BUILD_SCRIPT="$PROJECT_ROOT/scripts/build-typescript-lambda.sh"
         DEFAULT_CODE_S3_KEY="aws-lambda-connect-pstn-transfer-ts.zip"
+        ;;
+    3)
+        lambda_impl="python"
+        CODE_ZIP="aws-lambda-connect-pstn-transfer-py.zip"
+        BUILD_SCRIPT="$PROJECT_ROOT/scripts/build-python-lambda.sh"
+        DEFAULT_CODE_S3_KEY="aws-lambda-connect-pstn-transfer-py.zip"
         ;;
     *)
         lambda_impl="go"

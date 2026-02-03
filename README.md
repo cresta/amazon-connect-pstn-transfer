@@ -205,7 +205,12 @@ This repository contains multiple implementations of the Lambda function, all fu
 - **Location**: [`lambdas/pstn-transfer-ts/`](./lambdas/pstn-transfer-ts/)
 - **README**: [TypeScript Implementation README](./lambdas/pstn-transfer-ts/README.md)
 
-Both implementations provide identical functionality and can be used interchangeably. Choose the implementation that best fits your team's expertise and infrastructure requirements.
+### Python Implementation
+
+- **Location**: [`lambdas/pstn-transfer-py/`](./lambdas/pstn-transfer-py/)
+- **README**: [Python Implementation README](./lambdas/pstn-transfer-py/README.md)
+
+All three implementations provide identical functionality and can be used interchangeably. Choose the implementation that best fits your team's expertise and infrastructure requirements.
 
 For implementation-specific details, development setup, and deployment instructions, please refer to the respective README files linked above.
 

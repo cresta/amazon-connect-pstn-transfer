@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Lint script that runs linting for all implementations
-# Runs Go linting (gofmt, go vet) and TypeScript linting (eslint)
+# Runs Go linting (gofmt, go vet), TypeScript linting (eslint), and Python linting (ruff)
 
 # Note: We don't use set -e here because we want to run all linters
 # even if one fails, then report the overall status
@@ -76,6 +76,41 @@ if [ -d "lambdas/pstn-transfer-ts" ]; then
     fi
 else
     echo "⚠ TypeScript implementation directory not found, skipping TypeScript linting"
+fi
+echo ""
+
+# Run Python linting
+echo "--- Running Python Linter ---"
+if [ -d "lambdas/pstn-transfer-py" ]; then
+    if command -v ruff &> /dev/null || python3 -m ruff --version &> /dev/null 2>&1; then
+        if ! cd lambdas/pstn-transfer-py; then
+            echo "✗ Failed to enter lambdas/pstn-transfer-py directory"
+            LINT_FAILED=1
+        else
+            # Try ruff directly, fall back to python -m ruff
+            if command -v ruff &> /dev/null; then
+                if ruff check src tests; then
+                    echo "✓ Python linting passed"
+                else
+                    echo "✗ Python linting failed"
+                    LINT_FAILED=1
+                fi
+            elif python3 -m ruff check src tests; then
+                echo "✓ Python linting passed"
+            else
+                echo "✗ Python linting failed"
+                LINT_FAILED=1
+            fi
+            if ! cd "$PROJECT_ROOT"; then
+                echo "✗ Failed to return to PROJECT_ROOT"
+                exit 1
+            fi
+        fi
+    else
+        echo "⚠ ruff not found, skipping Python linting"
+    fi
+else
+    echo "⚠ Python implementation directory not found, skipping Python linting"
 fi
 echo ""
 

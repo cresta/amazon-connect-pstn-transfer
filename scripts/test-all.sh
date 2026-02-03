@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Test script that runs all tests for the project
-# Runs Go tests, TypeScript tests, and shared integration tests
+# Runs Go tests, TypeScript tests, Python tests, and shared integration tests
 
 # Note: We don't use set -e here because we want to run all tests
 # even if one fails, then report the overall status
@@ -61,6 +61,45 @@ if [ -d "lambdas/pstn-transfer-ts" ]; then
     fi
 else
     echo "⚠ TypeScript implementation directory not found, skipping TypeScript tests"
+fi
+echo ""
+
+# Run Python tests
+echo "--- Running Python Tests ---"
+if [ -d "lambdas/pstn-transfer-py" ]; then
+    if command -v python3 &> /dev/null || command -v python &> /dev/null; then
+        if ! cd lambdas/pstn-transfer-py; then
+            echo "✗ Failed to enter lambdas/pstn-transfer-py directory"
+            TESTS_FAILED=1
+        else
+            # Try pytest first, fall back to python -m pytest
+            if command -v pytest &> /dev/null; then
+                if pytest; then
+                    echo "✓ Python tests passed"
+                else
+                    echo "✗ Python tests failed"
+                    TESTS_FAILED=1
+                fi
+            elif python3 -m pytest --version &> /dev/null; then
+                if python3 -m pytest; then
+                    echo "✓ Python tests passed"
+                else
+                    echo "✗ Python tests failed"
+                    TESTS_FAILED=1
+                fi
+            else
+                echo "⚠ pytest not found, skipping Python tests"
+            fi
+            if ! cd "$PROJECT_ROOT"; then
+                echo "✗ Failed to return to PROJECT_ROOT"
+                exit 1
+            fi
+        fi
+    else
+        echo "⚠ Python not found, skipping Python tests"
+    fi
+else
+    echo "⚠ Python implementation directory not found, skipping Python tests"
 fi
 echo ""
 

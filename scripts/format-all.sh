@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Format script that formats code for all implementations
-# Runs Go formatting (gofmt) and TypeScript formatting (prettier)
+# Runs Go formatting (gofmt), TypeScript formatting (prettier), and Python formatting (ruff)
 
 # Note: We don't use set -e here because we want to format all code
 # even if one formatter fails, then report the overall status
@@ -61,6 +61,41 @@ if [ -d "lambdas/pstn-transfer-ts" ]; then
     fi
 else
     echo "⚠ TypeScript implementation directory not found, skipping TypeScript formatting"
+fi
+echo ""
+
+# Run Python formatting
+echo "--- Formatting Python Code ---"
+if [ -d "lambdas/pstn-transfer-py" ]; then
+    if command -v ruff &> /dev/null || python3 -m ruff --version &> /dev/null 2>&1; then
+        if ! cd lambdas/pstn-transfer-py; then
+            echo "✗ Failed to enter lambdas/pstn-transfer-py directory"
+            FORMAT_FAILED=1
+        else
+            # Try ruff directly, fall back to python -m ruff
+            if command -v ruff &> /dev/null; then
+                if ruff format src tests; then
+                    echo "✓ Python code formatted"
+                else
+                    echo "✗ Python formatting failed"
+                    FORMAT_FAILED=1
+                fi
+            elif python3 -m ruff format src tests; then
+                echo "✓ Python code formatted"
+            else
+                echo "✗ Python formatting failed"
+                FORMAT_FAILED=1
+            fi
+            if ! cd "$PROJECT_ROOT"; then
+                echo "✗ Failed to return to PROJECT_ROOT"
+                exit 1
+            fi
+        fi
+    else
+        echo "⚠ ruff not found, skipping Python formatting"
+    fi
+else
+    echo "⚠ Python implementation directory not found, skipping Python formatting"
 fi
 echo ""
 

@@ -31,6 +31,7 @@ The Lambda function supports OAuth Client Credentials. You can provide credentia
 #### Using parameters.json (Recommended)
 
 1. Copy `parameters.json.example` to `parameters.json` and fill in your values:
+
    ```bash
    cp parameters.json.example parameters.json
    # Edit parameters.json with your values
@@ -54,52 +55,53 @@ The Lambda function supports OAuth Client Credentials. You can provide credentia
 Alternatively, you can specify parameters inline:
 
 ```bash
-# Using AWS Secrets Manager (Recommended for production)
-# For Go implementation (default)
+# Define your configuration variables
+STACK_NAME="my-stack"
+LAMBDA_IMPLEMENTATION="go"  # Options: go, typescript, python
+VIRTUAL_AGENT_NAME="customers/..."
+REGION="us-west-2-prod"
+CODE_S3_BUCKET="my-bucket"
+CODE_S3_KEY="aws-lambda-connect-pstn-transfer-${LAMBDA_IMPLEMENTATION}.zip"
+FUNCTION_NAME="aws-lambda-connect-pstn-transfer"
+ROLE_NAME="aws-lambda-connect-pstn-transfer-role"
+
+# Authentication (choose one option)
+# Option 1: AWS Secrets Manager (Recommended for production)
+OAUTH_SECRET_ARN="arn:aws:secretsmanager:us-west-2:123456789012:secret:my-oauth-secret"
+
+# Option 2: Environment variables
+OAUTH_CLIENT_ID="your-client-id"
+OAUTH_CLIENT_SECRET="your-client-secret"
+
+# Deploy using Secrets Manager (Recommended)
 aws cloudformation create-stack \
-  --stack-name my-stack \
+  --stack-name "${STACK_NAME}" \
   --template-body file://template.yaml \
   --parameters \
-    ParameterKey=LambdaImplementation,ParameterValue=go \
-    ParameterKey=OAuthSecretArn,ParameterValue=arn:aws:secretsmanager:us-west-2:123456789012:secret:my-oauth-secret \
-    ParameterKey=VirtualAgentName,ParameterValue=customers/... \
-    ParameterKey=Region,ParameterValue=us-west-2-prod \
-    ParameterKey=CodeS3Bucket,ParameterValue=my-bucket \
-    ParameterKey=CodeS3Key,ParameterValue=aws-lambda-connect-pstn-transfer-go.zip \
-    ParameterKey=FunctionName,ParameterValue=aws-lambda-connect-pstn-transfer \
-    ParameterKey=RoleName,ParameterValue=aws-lambda-connect-pstn-transfer-role \
+    ParameterKey=LambdaImplementation,ParameterValue="${LAMBDA_IMPLEMENTATION}" \
+    ParameterKey=OAuthSecretArn,ParameterValue="${OAUTH_SECRET_ARN}" \
+    ParameterKey=VirtualAgentName,ParameterValue="${VIRTUAL_AGENT_NAME}" \
+    ParameterKey=Region,ParameterValue="${REGION}" \
+    ParameterKey=CodeS3Bucket,ParameterValue="${CODE_S3_BUCKET}" \
+    ParameterKey=CodeS3Key,ParameterValue="${CODE_S3_KEY}" \
+    ParameterKey=FunctionName,ParameterValue="${FUNCTION_NAME}" \
+    ParameterKey=RoleName,ParameterValue="${ROLE_NAME}" \
   --capabilities CAPABILITY_NAMED_IAM
 
-# Using OAuth 2 credentials as environment variables
-# For Go implementation (default)
+# Or deploy using OAuth credentials as environment variables
 aws cloudformation create-stack \
-  --stack-name my-stack \
+  --stack-name "${STACK_NAME}" \
   --template-body file://template.yaml \
   --parameters \
-    ParameterKey=LambdaImplementation,ParameterValue=go \
-    ParameterKey=OAuthClientId,ParameterValue=your-client-id \
-    ParameterKey=OAuthClientSecret,ParameterValue=your-client-secret \
-    ParameterKey=VirtualAgentName,ParameterValue=customers/... \
-    ParameterKey=Region,ParameterValue=us-west-2-prod \
-    ParameterKey=CodeS3Bucket,ParameterValue=my-bucket \
-    ParameterKey=CodeS3Key,ParameterValue=aws-lambda-connect-pstn-transfer-go.zip \
-    ParameterKey=FunctionName,ParameterValue=aws-lambda-connect-pstn-transfer \
-    ParameterKey=RoleName,ParameterValue=aws-lambda-connect-pstn-transfer-role \
-  --capabilities CAPABILITY_NAMED_IAM
-
-# For TypeScript implementation (using Secrets Manager)
-aws cloudformation create-stack \
-  --stack-name my-stack \
-  --template-body file://template.yaml \
-  --parameters \
-    ParameterKey=LambdaImplementation,ParameterValue=typescript \
-    ParameterKey=OAuthSecretArn,ParameterValue=arn:aws:secretsmanager:us-west-2:123456789012:secret:my-oauth-secret \
-    ParameterKey=VirtualAgentName,ParameterValue=customers/... \
-    ParameterKey=Region,ParameterValue=us-west-2-prod \
-    ParameterKey=CodeS3Bucket,ParameterValue=my-bucket \
-    ParameterKey=CodeS3Key,ParameterValue=aws-lambda-connect-pstn-transfer-ts.zip \
-    ParameterKey=FunctionName,ParameterValue=aws-lambda-connect-pstn-transfer \
-    ParameterKey=RoleName,ParameterValue=aws-lambda-connect-pstn-transfer-role \
+    ParameterKey=LambdaImplementation,ParameterValue="${LAMBDA_IMPLEMENTATION}" \
+    ParameterKey=OAuthClientId,ParameterValue="${OAUTH_CLIENT_ID}" \
+    ParameterKey=OAuthClientSecret,ParameterValue="${OAUTH_CLIENT_SECRET}" \
+    ParameterKey=VirtualAgentName,ParameterValue="${VIRTUAL_AGENT_NAME}" \
+    ParameterKey=Region,ParameterValue="${REGION}" \
+    ParameterKey=CodeS3Bucket,ParameterValue="${CODE_S3_BUCKET}" \
+    ParameterKey=CodeS3Key,ParameterValue="${CODE_S3_KEY}" \
+    ParameterKey=FunctionName,ParameterValue="${FUNCTION_NAME}" \
+    ParameterKey=RoleName,ParameterValue="${ROLE_NAME}" \
   --capabilities CAPABILITY_NAMED_IAM
 ```
 
@@ -112,8 +114,9 @@ The `deploy-cloudformation.sh` script automates the build, upload, and deploymen
 ```
 
 The script will:
+
 1. Prompt for all required values:
-   - Lambda implementation type: Go or TypeScript (default: Go)
+   - Lambda implementation type: Go, TypeScript, or Python (default: Go)
    - CloudFormation stack name (required)
    - Authentication method:
      - Option 1: AWS Secrets Manager (recommended for production)
@@ -125,7 +128,8 @@ The script will:
    - S3 bucket name (required)
    - S3 key (optional, defaults based on implementation type:
      - Go: `aws-lambda-connect-pstn-transfer-go.zip`
-     - TypeScript: `aws-lambda-connect-pstn-transfer-ts.zip`)
+     - TypeScript: `aws-lambda-connect-pstn-transfer-ts.zip`
+     - Python: `aws-lambda-connect-pstn-transfer-py.zip`)
    - Lambda function name (optional, defaults to `aws-lambda-connect-pstn-transfer`)
    - IAM role name (optional, defaults to `aws-lambda-connect-pstn-transfer-role`)
 2. Build the Lambda function for Linux ARM64 (using the appropriate build script)
@@ -136,4 +140,3 @@ The script will:
 **Note:** The template uses CloudFormation Conditions to automatically set the correct Runtime, Handler, and default S3 key based on the selected implementation type. Shared parameters (OAuth credentials, Virtual Agent Name, Region) are used for both implementations.
 
 **Note:** The script prompts for all values interactively. For automated deployments or CI/CD pipelines, use `parameters.json` with AWS CLI as shown above.
-
