@@ -44,7 +44,7 @@
 			"request": "launch",
 			"module": "src.handler",
 			"cwd": "${workspaceFolder}/lambdas/pstn-transfer-py",
-			"args": ["--test"],
+			"args": ["--test", "${workspaceFolder}/${input:json}"],
 			"env": {
 				"oauthClientId": "${input:oauthClientId}",
 				"oauthClientSecret": "${input:oauthClientSecret}",
@@ -52,8 +52,7 @@
 				"PYTHONPATH": "${workspaceFolder}/lambdas/pstn-transfer-py"
 			},
 			"console": "integratedTerminal",
-			"justMyCode": true,
-			"redirectInput": "${workspaceFolder}/${input:json}"
+			"justMyCode": true
 		}
 	],
 	"inputs": [

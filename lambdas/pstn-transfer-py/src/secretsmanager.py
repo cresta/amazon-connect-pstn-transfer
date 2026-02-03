@@ -2,6 +2,8 @@
 AWS Secrets Manager utility for fetching OAuth credentials
 """
 
+from __future__ import annotations
+
 import json
 from typing import TYPE_CHECKING
 

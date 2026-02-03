@@ -61,7 +61,13 @@ LAMBDA_IMPLEMENTATION="go"  # Options: go, typescript, python
 VIRTUAL_AGENT_NAME="customers/..."
 REGION="us-west-2-prod"
 CODE_S3_BUCKET="my-bucket"
-CODE_S3_KEY="aws-lambda-connect-pstn-transfer-${LAMBDA_IMPLEMENTATION}.zip"
+# Map implementation to artifact suffix (go->go, typescript->ts, python->py)
+case "$LAMBDA_IMPLEMENTATION" in
+    typescript) ARTIFACT_SUFFIX="ts" ;;
+    python) ARTIFACT_SUFFIX="py" ;;
+    *) ARTIFACT_SUFFIX="$LAMBDA_IMPLEMENTATION" ;;  # go->go
+esac
+CODE_S3_KEY="aws-lambda-connect-pstn-transfer-${ARTIFACT_SUFFIX}.zip"
 FUNCTION_NAME="aws-lambda-connect-pstn-transfer"
 ROLE_NAME="aws-lambda-connect-pstn-transfer-role"
 

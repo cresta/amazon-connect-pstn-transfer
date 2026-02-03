@@ -2,6 +2,8 @@
 Cresta API client matching the Go and TypeScript implementations
 """
 
+from __future__ import annotations
+
 import json
 from typing import TYPE_CHECKING, Any
 
@@ -14,7 +16,7 @@ if TYPE_CHECKING:
 class CrestaAPIClient:
     """API client for Cresta services"""
 
-    def __init__(self, logger: Logger, auth_config: AuthConfig):
+    def __init__(self, logger: Logger, auth_config: AuthConfig) -> None:
         if not auth_config:
             raise ValueError("authConfig is required for CrestaAPIClient")
 

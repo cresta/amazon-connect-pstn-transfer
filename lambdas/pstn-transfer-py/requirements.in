@@ -1,0 +1,4 @@
+# Production dependencies input file for pip-compile
+# NOTE: boto3 is NOT included here because it's pre-installed in the AWS Lambda Python runtime.
+# This keeps the deployment package small (~100KB instead of ~15MB) for faster cold starts.
+# For local development/testing, install requirements-dev.txt which includes boto3.

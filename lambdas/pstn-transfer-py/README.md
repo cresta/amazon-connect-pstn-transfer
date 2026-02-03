@@ -62,15 +62,9 @@ ruff format src tests
 ```bash
 # From the lambdas/pstn-transfer-py directory
 ./package.sh
-
-# Or manually:
-pip install -r requirements.txt -t package/
-cp -r src/* package/
-cd package && zip -r ../aws-lambda-connect-pstn-transfer-py.zip . && cd ..
-rm -rf package
 ```
 
-This creates a zip file at `../aws-lambda-connect-pstn-transfer-py.zip` ready for Lambda deployment.
+This creates a zip file at the project root (`aws-lambda-connect-pstn-transfer-py.zip`) ready for Lambda deployment.
 
 ### Local Development
 

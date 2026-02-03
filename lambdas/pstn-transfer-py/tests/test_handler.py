@@ -149,6 +149,8 @@ class TestDefaultHandlerService:
 
     def test_builds_auth_domain_from_region(self):
         """Should build auth domain from region when not provided"""
+        from unittest.mock import patch
+
         event = ConnectEvent(
             Details={
                 "ContactData": {"ContactId": "test"},
@@ -162,17 +164,18 @@ class TestDefaultHandlerService:
             }
         )
 
-        # We can't easily test the internal auth domain building without mocking
-        # This test verifies the handler doesn't fail when authDomain is not provided
-        # but region is provided (it will fail later on the actual HTTP request)
         mock_token_fetcher = MagicMock()
         mock_token_fetcher.get_token.return_value = "mock-token"
 
         service = DefaultHandlerService(token_fetcher=mock_token_fetcher)
 
-        # Will fail on actual HTTP request, but shouldn't fail on auth domain validation
-        with pytest.raises(ValueError):  # Will fail on HTTP request
-            service.handle(event)
+        # Mock the RetryHTTPClient.fetch to avoid real HTTP requests
+        with patch("src.httpclient.RetryHTTPClient.fetch") as mock_fetch:
+            mock_fetch.side_effect = ValueError("mocked HTTP error - no real request made")
+
+            # Will fail on mocked HTTP request, but shouldn't fail on auth domain validation
+            with pytest.raises(ValueError, match="mocked HTTP error"):
+                service.handle(event)
 
 
 class TestHandler:

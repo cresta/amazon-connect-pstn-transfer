@@ -2,6 +2,8 @@
 Handlers for different API actions matching the Go and TypeScript implementations
 """
 
+from __future__ import annotations
+
 import json
 from typing import TYPE_CHECKING, Any
 
@@ -39,7 +41,7 @@ class Handlers:
         virtual_agent_id: str,
         supported_dtmf_chars: str,
         event: ConnectEvent,
-    ):
+    ) -> None:
         self._logger = logger
         self._api_client = api_client
         self._domain = domain

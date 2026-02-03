@@ -40,7 +40,10 @@ class Logger:
         message = format_str
         for arg in args:
             if isinstance(arg, (dict, list)):
-                value = json.dumps(arg)
+                try:
+                    value = json.dumps(arg)
+                except (TypeError, ValueError):
+                    value = json.dumps(arg, default=str)
             elif isinstance(arg, (int, float)):
                 value = str(arg)
             else:

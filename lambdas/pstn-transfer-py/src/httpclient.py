@@ -2,6 +2,8 @@
 HTTP client with retry logic matching the Go and TypeScript implementations
 """
 
+from __future__ import annotations
+
 import random
 import time
 import urllib.error
@@ -46,7 +48,7 @@ class AuthConfig:
         oauth_client_id: str | None = None,
         oauth_client_secret: str | None = None,
         token_fetcher: OAuth2TokenFetcher | None = None,
-    ):
+    ) -> None:
         self.api_key = api_key
         self.auth_domain = auth_domain
         self.oauth_client_id = oauth_client_id
@@ -84,7 +86,7 @@ class RetryHTTPClient(HTTPClient):
         auth_config: AuthConfig | None = None,
         max_retries: int | None = None,
         base_delay: int | None = None,
-    ):
+    ) -> None:
         self._logger = logger
         self._auth_config = auth_config
         self._max_retries = max_retries if max_retries is not None else HTTP_MAX_RETRIES

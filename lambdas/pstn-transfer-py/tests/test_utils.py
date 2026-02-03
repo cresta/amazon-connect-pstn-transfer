@@ -269,7 +269,7 @@ class TestValidatePathSegment:
 
     def test_rejects_encoded_traversal(self):
         """Should reject URL-encoded path traversal"""
-        with pytest.raises(ValueError, match="URL-encoded"):
+        with pytest.raises(ValueError, match="path traversal"):
             validate_path_segment("%2e%2e", "test")
 
     def test_rejects_null_byte(self):

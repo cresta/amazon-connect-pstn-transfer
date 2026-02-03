@@ -2,6 +2,8 @@
 OAuth 2 authentication with token caching matching the Go and TypeScript implementations
 """
 
+from __future__ import annotations
+
 import base64
 import json
 import time
@@ -92,7 +94,7 @@ class OAuth2TokenFetcher(ABC):
 class DefaultOAuth2TokenFetcher(OAuth2TokenFetcher):
     """Default implementation of OAuth2 token fetcher"""
 
-    def __init__(self, client: HTTPClient | None = None, logger: Logger | None = None):
+    def __init__(self, client: HTTPClient | None = None, logger: Logger | None = None) -> None:
         from .logger import new_logger
 
         self._logger = logger or new_logger()

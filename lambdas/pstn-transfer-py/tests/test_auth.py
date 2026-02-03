@@ -36,15 +36,29 @@ class TestTokenCache:
     def test_returns_none_for_expired_token(self):
         """Should return None for expired token"""
         cache = TokenCache()
-        # Set token with very short expiration (will expire immediately after buffer)
-        cache.set_token("client-id", "expired-token", 301)
-        # Token should be cached but with very short effective TTL
-        # The 5-minute buffer means 301 - 300 = 1 second effective TTL
-        # We can test by manipulating time or just testing the logic
-        # For now, verify the token was set
-        result = cache.get_token("client-id")
-        # Should still be valid since only 1 second effective TTL
-        assert result == "expired-token"
+
+        # Mock time to control expiration deterministically
+        import time as time_module
+        from unittest.mock import patch
+
+        initial_time = 1000000.0
+
+        with patch.object(time_module, "time") as mock_time:
+            # Set time for when token is stored
+            mock_time.return_value = initial_time
+            # Set token with 301 second expiration (effective TTL = 301 - 300 = 1 second)
+            cache.set_token("client-id", "expired-token", 301)
+
+            # Token should still be valid immediately after setting
+            result = cache.get_token("client-id")
+            assert result == "expired-token"
+
+            # Advance time past the effective TTL (1 second + buffer)
+            mock_time.return_value = initial_time + 2
+
+            # Token should now be expired
+            result = cache.get_token("client-id")
+            assert result is None
 
     def test_clear_token(self):
         """Should clear token from cache"""

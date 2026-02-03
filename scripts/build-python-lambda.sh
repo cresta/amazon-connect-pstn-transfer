@@ -20,10 +20,9 @@ chmod +x "$LAMBDA_DIR/package.sh"
 # The package script creates the zip in the project root
 ZIP_IN_LAMBDAS="$PROJECT_ROOT/$OUTPUT_ZIP"
 if [ -f "$ZIP_IN_LAMBDAS" ]; then
-    mv "$ZIP_IN_LAMBDAS" "$PROJECT_ROOT/$OUTPUT_ZIP"
     echo ""
     echo "Build successful: $OUTPUT_ZIP"
-    echo "Package size: $(du -h "$PROJECT_ROOT/$OUTPUT_ZIP" | cut -f1)"
+    echo "Package size: $(du -h "$ZIP_IN_LAMBDAS" | cut -f1)"
 else
     echo "Error: Failed to create deployment package - $OUTPUT_ZIP not found"
     exit 1

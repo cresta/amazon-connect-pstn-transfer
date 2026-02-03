@@ -70,7 +70,12 @@ def build_api_domain_from_region(region: str) -> str:
 
 def extract_region_from_domain(api_domain: str) -> str:
     """Extracts the AWS region from the API domain"""
-    match = API_DOMAIN_REGEX.search(api_domain)
+    # Parse the URL to extract hostname, avoiding matches on substrings in paths/ports
+    parsed = urlparse(api_domain)
+    hostname = parsed.hostname or parsed.path.split("/")[0].split(":")[0]
+
+    # Use fullmatch on the hostname to ensure exact pattern matching
+    match = API_DOMAIN_REGEX.fullmatch(hostname)
     if not match:
         raise ValueError(f"could not extract region from domain: {api_domain}")
     return match.group(1)
@@ -168,17 +173,38 @@ def validate_domain(domain: str) -> None:
 
 def validate_path_segment(segment: str, name: str) -> None:
     """Validates that a path segment is safe"""
+    from urllib.parse import unquote
+
     if not segment:
-        raise ValueError(f"{name} cannot be empty")
+        raise ValueError(f"{name} cannot be empty: {segment}")
 
-    # Reject path traversal attempts
-    if ".." in segment or "/" in segment:
-        raise ValueError(f"{name} contains invalid characters (path traversal detected): {segment}")
+    # Decode the segment once to catch percent-encoded attacks
+    decoded = unquote(segment)
 
-    # Reject URL-encoded path traversal (case-insensitive)
-    if "%2e%2e" in segment.lower():
+    # Check both original and decoded for path traversal
+    for value in [segment, decoded]:
+        # Reject path traversal attempts
+        if ".." in value:
+            raise ValueError(
+                f"{name} contains invalid characters (path traversal detected): {segment}"
+            )
+        if "/" in value or "\\" in value:
+            raise ValueError(
+                f"{name} contains invalid characters (path traversal detected): {segment}"
+            )
+
+    # Reject URL-encoded path traversal (case-insensitive) - catches %2e%2e, %2f, %5c
+    segment_lower = segment.lower()
+    if "%2e%2e" in segment_lower:
         raise ValueError(f"{name} contains URL-encoded path traversal: {segment}")
+    if "%2f" in segment_lower or "%5c" in segment_lower:
+        raise ValueError(f"{name} contains URL-encoded path separator: {segment}")
 
-    # Reject null bytes
-    if "\x00" in segment:
-        raise ValueError(f"{name} contains null byte")
+    # Reject double-encoded traversal (decoded will reveal %2e after first unquote)
+    decoded_lower = decoded.lower()
+    if "%2e" in decoded_lower or "%2f" in decoded_lower or "%5c" in decoded_lower:
+        raise ValueError(f"{name} contains double-encoded path traversal: {segment}")
+
+    # Reject null bytes in both original and decoded
+    if "\x00" in segment or "\x00" in decoded:
+        raise ValueError(f"{name} contains null byte: {segment}")
