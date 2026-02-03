@@ -11,7 +11,7 @@ from typing import Any
 class Logger:
     """Logger with debug, info, warn, and error levels"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._debug_enabled = os.environ.get("DEBUG_LOGGING", "").lower() == "true"
 
     def debugf(self, format_str: str, *args: Any) -> None:

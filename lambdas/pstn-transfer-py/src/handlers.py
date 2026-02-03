@@ -79,7 +79,7 @@ class Handlers:
         body = self._api_client.make_request("POST", url, payload)
 
         try:
-            result = json.loads(body.decode("utf-8"))
+            result: ConnectResponse = json.loads(body.decode("utf-8"))
         except json.JSONDecodeError as e:
             raise ValueError(f"failed to parse JSON response from {url}: {e}") from e
 

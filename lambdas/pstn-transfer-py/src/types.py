@@ -21,17 +21,20 @@ class ConnectEvent:
     @property
     def contact_data(self) -> dict[str, Any]:
         """Get ContactData from Details"""
-        return self.Details.get("ContactData", {})
+        result: dict[str, Any] = self.Details.get("ContactData", {})
+        return result
 
     @property
     def contact_id(self) -> str:
         """Get ContactId from ContactData"""
-        return self.contact_data.get("ContactId", "")
+        result: str = self.contact_data.get("ContactId", "")
+        return result
 
     @property
     def parameters(self) -> dict[str, str]:
         """Get Parameters from Details"""
-        return self.Details.get("Parameters", {})
+        result: dict[str, str] = self.Details.get("Parameters", {})
+        return result
 
 
 # Type alias for Connect response

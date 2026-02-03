@@ -121,7 +121,7 @@ class RetryHTTPClient(HTTPClient):
 
                 with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
                     status_code = response.status
-                    response_body = response.read()
+                    response_body: bytes = response.read()
 
                     # Check if status code is retryable
                     if not is_retryable_error(None, status_code):
@@ -138,13 +138,13 @@ class RetryHTTPClient(HTTPClient):
 
             except urllib.error.HTTPError as e:
                 status_code = e.code
-                response_body = e.read().decode("utf-8") if e.fp else ""
+                error_body = e.read().decode("utf-8") if e.fp else ""
 
                 # Check if status code is retryable
                 if not is_retryable_error(None, status_code):
                     # Non-retryable error
                     raise ValueError(
-                        f"request returned non-200 status: {status_code}, body: {response_body}"
+                        f"request returned non-200 status: {status_code}, body: {error_body}"
                     ) from e
 
                 # Retryable status code

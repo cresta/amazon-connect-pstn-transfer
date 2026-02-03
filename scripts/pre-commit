@@ -1,0 +1,11 @@
+#!/bin/bash
+set -e
+
+# Run format and lint checks
+echo "Running format check..."
+./scripts/format-all.sh || { echo "❌ Format check failed"; exit 1; }
+
+echo "Running lint check..."
+./scripts/lint-all.sh || { echo "❌ Lint check failed"; exit 1; }
+
+echo "✓ Pre-commit checks passed"

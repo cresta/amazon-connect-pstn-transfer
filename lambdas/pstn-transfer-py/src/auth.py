@@ -30,7 +30,7 @@ class CacheEntry:
 class TokenCache:
     """Thread-safe token cache"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._cache: dict[str, CacheEntry] = {}
         self._lock = Lock()
 
@@ -163,8 +163,8 @@ class DefaultOAuth2TokenFetcher(OAuth2TokenFetcher):
         if "access_token" not in token_response or not token_response["access_token"]:
             raise ValueError("missing access_token in token response")
 
-        access_token = token_response["access_token"]
-        expires_in = token_response.get("expires_in", 0)
+        access_token: str = token_response["access_token"]
+        expires_in: int = token_response.get("expires_in", 0)
 
         # Cache the token (use client_id as cache key)
         if expires_in > 0:

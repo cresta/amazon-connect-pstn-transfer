@@ -20,6 +20,7 @@ This repo contains the required AWS resources for doing a transfer using PSTN on
     - [API Specification](#api-specification)
   - [Lambda Function Implementations](#lambda-function-implementations)
     - [Global Build Scripts](#global-build-scripts)
+    - [Git Hooks](#git-hooks)
     - [Running All Tests](#running-all-tests)
     - [Linting All](#linting-all)
     - [Formatting All](#formatting-all)
@@ -221,6 +222,14 @@ Usage:
 ```bash
 # Build both Lambda functions
 ./scripts/build-all.sh
+```
+
+### Git Hooks
+
+To install pre-commit hooks that run format and lint checks before each commit:
+
+```bash
+./scripts/install-hooks.sh
 ```
 
 ### Running All Tests
