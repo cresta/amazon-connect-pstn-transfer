@@ -59,17 +59,6 @@ class OAuthCredentials:
 
 
 @dataclass
-class AuthConfig:
-    """Authentication configuration"""
-
-    api_key: str | None = None  # Deprecated
-    auth_domain: str | None = None
-    oauth_client_id: str | None = None
-    oauth_client_secret: str | None = None
-    token_fetcher: Any | None = None  # OAuth2TokenFetcher type
-
-
-@dataclass
 class TokenResponse:
     """OAuth token response"""
 

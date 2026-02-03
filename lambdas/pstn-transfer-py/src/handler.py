@@ -258,11 +258,16 @@ def handler(event: dict[str, Any], context: Any = None) -> ConnectResponse:
         raise
 
 
-# Support test mode: if run directly with --test flag, read from stdin and write to stdout
+# Support test mode: if run directly with --test flag, read from file or stdin and write to stdout
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--test":
-        event_data = json.load(sys.stdin)
         try:
+            # Read from file if provided, otherwise from stdin
+            if len(sys.argv) > 2:
+                with open(sys.argv[2]) as f:
+                    event_data = json.load(f)
+            else:
+                event_data = json.load(sys.stdin)
             result = handler(event_data)
             json.dump(result, sys.stdout)
             sys.stdout.write("\n")
