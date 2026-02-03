@@ -4,7 +4,7 @@
 
 This repo contains the required AWS resources for doing a transfer using PSTN only
 
-- **Lambda Function** (Go and TypeScript implementations available)
+- **Lambda Function** (Go, TypeScript, and Python implementations available)
 - **AWS Connect Flow**
 
 ## Table Of Contents
@@ -220,7 +220,7 @@ For implementation-specific details, development setup, and deployment instructi
 Usage:
 
 ```bash
-# Build both Lambda functions
+# Build all Lambda functions
 ./scripts/build-all.sh
 ```
 
@@ -234,7 +234,7 @@ To install pre-commit hooks that run format and lint checks before each commit:
 
 ### Running All Tests
 
-To run all tests (Go, TypeScript, and shared integration tests) in one command:
+To run all tests (Go, TypeScript, Python, and shared integration tests) in one command:
 
 ```bash
 ./scripts/test-all.sh
@@ -242,7 +242,7 @@ To run all tests (Go, TypeScript, and shared integration tests) in one command:
 
 ### Linting All
 
-To run all linters (Go and TypeScript) in one command:
+To run all linters (Go, TypeScript, and Python) in one command:
 
 ```bash
 ./scripts/lint-all.sh
@@ -250,7 +250,7 @@ To run all linters (Go and TypeScript) in one command:
 
 ### Formatting All
 
-To format all code (Go and TypeScript) in one command:
+To format all code (Go, TypeScript, and Python) in one command:
 
 ```bash
 ./scripts/format-all.sh
@@ -261,7 +261,7 @@ To format all code (Go and TypeScript) in one command:
 - **Location**: [`shared/testdata/`](./shared/testdata/)
 - **README**: [Shared Tests README](./shared/testdata/README.md)
 
-The shared integration tests validate that both Go and TypeScript implementations behave identically.
+The shared integration tests validate that all three implementations (Go, TypeScript, and Python) behave identically.
 To run the shared tests:
 
 ```bash
@@ -274,7 +274,7 @@ npm test
 
 The project uses a shared `VERSION` file at the project root for version management across all implementations. This version is:
 
-- **Injected at build time** into both Go and TypeScript implementations
+- **Injected at build time** into all three implementations
 - **Included in `ccaasMetadata`** sent to the backend API for logging and tracking
 - **Single source of truth** - update the `VERSION` file to change the version for all implementations
 
@@ -282,6 +282,7 @@ The version is automatically read from the `VERSION` file during the build proce
 
 - **Go**: Injected via `-ldflags` during compilation
 - **TypeScript**: Injected via esbuild `--define` flag during bundling
+- **Python**: Injected via string replacement during packaging
 
 To update the version, simply edit the `VERSION` file at the project root.
 
