@@ -223,7 +223,8 @@ echo ""
 echo "Which Lambda implementation would you like to deploy?"
 echo "1) Go (provided.al2023 runtime, ARM64)"
 echo "2) TypeScript (Node.js runtime, ARM64)"
-read -p "Enter choice [1 or 2] (default: 1): " implementation_choice
+echo "3) Python (Python 3.14 runtime, x86_64)"
+read -p "Enter choice [1, 2, or 3] (default: 1): " implementation_choice
 
 if [ -z "$implementation_choice" ]; then
     implementation_choice="1"
@@ -246,8 +247,16 @@ case "$implementation_choice" in
         ZIP_FILE="aws-lambda-connect-pstn-transfer-ts.zip"
         BUILD_SCRIPT="build-typescript-lambda.sh"
         ;;
+    3)
+        IMPLEMENTATION="python"
+        RUNTIME="python3.14"
+        HANDLER="src.handler.handler"
+        ARCHITECTURE="x86_64"
+        ZIP_FILE="aws-lambda-connect-pstn-transfer-py.zip"
+        BUILD_SCRIPT="build-python-lambda.sh"
+        ;;
     *)
-        echo "Error: Invalid choice. Please enter 1 or 2."
+        echo "Error: Invalid choice. Please enter 1, 2, or 3."
         exit 1
         ;;
 esac

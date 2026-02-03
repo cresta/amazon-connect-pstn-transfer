@@ -37,6 +37,22 @@
 			],
 			"sourceMaps": true,
 			"outFiles": ["${workspaceFolder}/lambdas/pstn-transfer-ts/dist/**/*.js"]
+		},
+		{
+			"name": "Launch (Python)",
+			"type": "debugpy",
+			"request": "launch",
+			"module": "src.handler",
+			"cwd": "${workspaceFolder}/lambdas/pstn-transfer-py",
+			"args": ["--test", "${workspaceFolder}/${input:json}"],
+			"env": {
+				"oauthClientId": "${input:oauthClientId}",
+				"oauthClientSecret": "${input:oauthClientSecret}",
+				"region": "${input:region}",
+				"PYTHONPATH": "${workspaceFolder}/lambdas/pstn-transfer-py"
+			},
+			"console": "integratedTerminal",
+			"justMyCode": true
 		}
 	],
 	"inputs": [

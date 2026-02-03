@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Build script that builds both Go and TypeScript Lambda functions
-# Runs build-go-lambda.sh and build-typescript-lambda.sh
+# Build script that builds Go, TypeScript, and Python Lambda functions
+# Runs build-go-lambda.sh, build-typescript-lambda.sh, and build-python-lambda.sh
 
 set -e
 
@@ -15,6 +15,9 @@ echo ""
 echo ""
 
 "$SCRIPT_DIR/build-typescript-lambda.sh"
+echo ""
+
+"$SCRIPT_DIR/build-python-lambda.sh"
 echo ""
 
 echo "=== All builds completed successfully ==="
