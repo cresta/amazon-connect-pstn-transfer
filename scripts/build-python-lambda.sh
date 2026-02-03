@@ -17,8 +17,8 @@ echo "=== Building Python Lambda ==="
 chmod +x "$LAMBDA_DIR/package.sh"
 "$LAMBDA_DIR/package.sh"
 
-# The package script creates the zip in the project root
-ZIP_IN_LAMBDAS="$PROJECT_ROOT/$OUTPUT_ZIP"
+# The package script creates the zip in the lambdas directory
+ZIP_IN_LAMBDAS="$PROJECT_ROOT/lambdas/$OUTPUT_ZIP"
 if [ -f "$ZIP_IN_LAMBDAS" ]; then
     mv "$ZIP_IN_LAMBDAS" "$PROJECT_ROOT/$OUTPUT_ZIP"
     echo ""
