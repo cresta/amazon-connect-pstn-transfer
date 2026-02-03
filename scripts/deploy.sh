@@ -223,7 +223,7 @@ echo ""
 echo "Which Lambda implementation would you like to deploy?"
 echo "1) Go (provided.al2023 runtime, ARM64)"
 echo "2) TypeScript (Node.js runtime, ARM64)"
-echo "3) Python (Python 3.14 runtime, ARM64)"
+echo "3) Python (Python 3.14 runtime, x86_64)"
 read -p "Enter choice [1, 2, or 3] (default: 1): " implementation_choice
 
 if [ -z "$implementation_choice" ]; then
@@ -251,7 +251,7 @@ case "$implementation_choice" in
         IMPLEMENTATION="python"
         RUNTIME="python3.14"
         HANDLER="src.handler.handler"
-        ARCHITECTURE="arm64"
+        ARCHITECTURE="x86_64"
         ZIP_FILE="aws-lambda-connect-pstn-transfer-py.zip"
         BUILD_SCRIPT="build-python-lambda.sh"
         ;;

@@ -158,7 +158,8 @@ Resources:
               - aws-lambda-connect-pstn-transfer-ts.zip
           - !Ref CodeS3Key
       Architectures:
-        - arm64
+
+        - !If [IsPythonImplementation, x86_64, arm64]
       Environment:
         Variables:
           oauthSecretArn: !Ref OAuthSecretArn

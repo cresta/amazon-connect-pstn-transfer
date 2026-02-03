@@ -11,10 +11,10 @@ import urllib.request
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
+from .types import AuthConfig
 from .utils import get_duration_from_env, get_int_from_env
 
 if TYPE_CHECKING:
-    from .auth import OAuth2TokenFetcher
     from .logger import Logger
 
 # Configuration from environment
@@ -36,24 +36,6 @@ class HTTPClient(ABC):
     ) -> bytes:
         """Make HTTP request and return response body"""
         pass
-
-
-class AuthConfig:
-    """Authentication configuration"""
-
-    def __init__(
-        self,
-        api_key: str | None = None,  # Deprecated
-        auth_domain: str | None = None,
-        oauth_client_id: str | None = None,
-        oauth_client_secret: str | None = None,
-        token_fetcher: OAuth2TokenFetcher | None = None,
-    ) -> None:
-        self.api_key = api_key
-        self.auth_domain = auth_domain
-        self.oauth_client_id = oauth_client_id
-        self.oauth_client_secret = oauth_client_secret
-        self.token_fetcher = token_fetcher
 
 
 def is_retryable_error(err: Exception | None, status_code: int) -> bool:

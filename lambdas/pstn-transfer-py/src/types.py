@@ -2,8 +2,13 @@
 Data models matching the Go and TypeScript implementations
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .auth import OAuth2TokenFetcher
 
 
 @dataclass
@@ -59,6 +64,15 @@ class OAuthCredentials:
 
 
 @dataclass
+class TokenResponse:
+    """OAuth token response"""
+
+    access_token: str
+    token_type: str
+    expires_in: int
+
+
+@dataclass
 class AuthConfig:
     """Authentication configuration"""
 
@@ -66,13 +80,4 @@ class AuthConfig:
     auth_domain: str | None = None
     oauth_client_id: str | None = None
     oauth_client_secret: str | None = None
-    token_fetcher: Any | None = None  # OAuth2TokenFetcher type
-
-
-@dataclass
-class TokenResponse:
-    """OAuth token response"""
-
-    access_token: str
-    token_type: str
-    expires_in: int
+    token_fetcher: OAuth2TokenFetcher | None = None

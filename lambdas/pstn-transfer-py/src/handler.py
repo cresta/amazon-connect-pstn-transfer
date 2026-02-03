@@ -258,13 +258,24 @@ def handler(event: dict[str, Any], context: Any = None) -> ConnectResponse:
         raise
 
 
-# Support test mode: if run directly with --test flag, read from stdin and write to stdout
+# Support test mode: if run directly with --test flag, read from file or stdin
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--test":
-        event_data = json.load(sys.stdin)
         try:
+            # Check if a file path was provided as the second argument
+            if len(sys.argv) > 2:
+                event_file = sys.argv[2]
+                # Handle both absolute and relative paths
+                if not os.path.isabs(event_file):
+                    event_file = os.path.join(os.getcwd(), event_file)
+                with open(event_file) as f:
+                    event_data = json.load(f)
+            else:
+                # Fall back to reading from stdin
+                event_data = json.load(sys.stdin)
+
             result = handler(event_data)
-            json.dump(result, sys.stdout)
+            json.dump(result, sys.stdout, indent=2)
             sys.stdout.write("\n")
         except Exception as e:
             sys.stderr.write(f"Error: {e}\n")

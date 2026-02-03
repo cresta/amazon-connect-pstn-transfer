@@ -92,7 +92,7 @@ It creates:
   - Includes basic Lambda execution permissions
 - **Lambda Function**: `aws-lambda-connect-pstn-transfer`
   - Runtime: Python 3.14
-  - Architecture: ARM64
+  - Architecture: x86_64
   - Handler: src.handler.handler
 
 > **Note**: The `deploy.sh` script will automatically create a `var.json` file in the project root with your environment variables (OAuth credentials, virtual agent name, and region) when you run it for the first time.
@@ -151,7 +151,7 @@ You can also deploy the Lambda function manually through the AWS Console. Follow
 2. **Configure Function**
    - **Function name**: `aws-lambda-connect-pstn-transfer`
    - **Runtime**: Select "Python 3.14" (`python3.14`)
-   - **Architecture**: Select `ARM64` (recommended) or `x86_64`
+   - **Architecture**: Select `x86_64` (recommended for Python)
    - Click "Create function"
 
 3. **Upload Code**
@@ -206,8 +206,8 @@ You can also deploy the Lambda function manually through the AWS Console. Follow
 - **Handler**: `src.handler.handler`
   - Points to the `handler` function in the `src/handler.py` file
   - Format: `{module_path}.{function_name}`
-- **Architecture**: `ARM64` (recommended) or `x86_64`
-  - ARM64 architecture is recommended for better cost efficiency
+- **Architecture**: `x86_64` (recommended for Python)
+  - x86_64 provides faster cold starts and execution for Python Lambdas
 - **Timeout**: `30 seconds`
   - Maximum execution time for the function. Actual execution should take a lot less.
 - **Memory**: `256 MB`
