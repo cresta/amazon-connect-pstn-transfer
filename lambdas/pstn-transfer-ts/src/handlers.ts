@@ -124,11 +124,23 @@ export class Handlers {
 			);
 		}
 
-		return {
+		const output: Record<string, string> = {
 			handoff_conversation: handoff.conversation,
 			handoff_conversationCorrelationId: handoff.conversationCorrelationId,
 			handoff_summary: handoff.summary,
 			handoff_transferTarget: handoff.transferTarget,
 		};
+
+		if (handoff.metadataByTaxonomy) {
+			for (const key of Object.keys(handoff.metadataByTaxonomy)) {
+				const outputKey = `handoff_${key.replace(/\./g, '_')}`;
+				const val = handoff.metadataByTaxonomy[key].value?.stringValue;
+				if (val) {
+					output[outputKey] = val;
+				}
+			}
+		}
+
+		return output;
 	}
 }

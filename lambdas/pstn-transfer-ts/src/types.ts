@@ -26,5 +26,12 @@ export interface Handoff {
 	conversationCorrelationId: string;
 	summary: string;
 	transferTarget: string;
-	// NOTE: We don't need the metadataByTaxonomy field.
+	metadataByTaxonomy?: Record<string, HandoffMetadataByTaxonomy>;
+}
+
+interface HandoffMetadataByTaxonomy {
+	displayName: string;
+	value: {
+		stringValue?: string;
+	}
 }
