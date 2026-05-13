@@ -68,7 +68,7 @@ export class Handlers {
 			supportedDtmfChars: this.supportedDtmfChars,
 		};
 
-		this.logger.debugf("Making request to %s with payload: %+v", url, payload);
+		this.logger.debugf("Making request to %s with payload: %s", url, payload);
 
 		const body = await this.apiClient.makeRequest(signal, "POST", url, payload);
 
@@ -81,7 +81,7 @@ export class Handlers {
 			);
 		}
 
-		this.logger.debugf("Received response: %+v", result);
+		this.logger.debugf("Received response: %s", result);
 		return result;
 	}
 
@@ -91,7 +91,7 @@ export class Handlers {
 			correlationId: this.event.Details.ContactData.ContactId,
 		};
 
-		this.logger.debugf("Making request to %s with payload: %+v", url, payload);
+		this.logger.debugf("Making request to %s with payload: %s", url, payload);
 
 		const body = await this.apiClient.makeRequest(signal, "POST", url, payload);
 
@@ -109,7 +109,7 @@ export class Handlers {
 		}
 
 		const result = parsed as FetchAIAgentHandoffResponse;
-		this.logger.debugf("Received response: %+v", result);
+		this.logger.debugf("Received response: %s", result);
 
 		// Validate required handoff fields exist and are the expected types
 		const handoff = result.handoff;
