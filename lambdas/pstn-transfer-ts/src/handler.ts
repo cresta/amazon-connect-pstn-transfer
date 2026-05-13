@@ -34,7 +34,7 @@ export class DefaultHandlerService implements HandlerService {
 	}
 
 	async handle(signal: AbortSignal, event: ConnectEvent): Promise<ConnectResponse> {
-		this.logger.debugf("Received event: %+v", event);
+		this.logger.debugf("Received event: %s", event);
 
 		// Extract region first - from region parameter or apiDomain
 		const regionParam = getFromEventParameterOrEnv(event, "region", "");
