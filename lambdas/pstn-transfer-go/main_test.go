@@ -369,6 +369,54 @@ func (s *MainTestSuite) TestHandlerService_Handle() {
 	}
 }
 
+func (s *MainTestSuite) TestHandlerService_Handle_StripsSecretsBeforeLogging() {
+	// Guards against the same bug class that leaked ack-lambda's API key into prod logs for
+	// ~2 months in 2023: Handle() must strip apiKey/oauthClientId/oauthClientSecret from
+	// event.Details.Parameters before its first log line. This test calls Handle() with all
+	// three set and asserts they're gone from Parameters afterward.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(events.ConnectResponse{
+			"phoneNumber":  "+1234567890",
+			"dtmfSequence": "1234",
+		})
+	}))
+	defer server.Close()
+
+	event := events.ConnectEvent{
+		Details: events.ConnectDetails{
+			ContactData: events.ConnectContactData{
+				ContactID: "test-contact-id",
+			},
+			Parameters: map[string]string{
+				"action":            "get_pstn_transfer_data",
+				"apiKey":            "test-api-key",
+				"oauthClientId":     "test-client-id",
+				"oauthClientSecret": "test-client-secret",
+				"apiDomain":         server.URL,
+				"authDomain":        server.URL,
+				"region":            "customer-profile",
+				"virtualAgentName":  "customers/test-customer/profiles/test-profile/virtualAgents/test-agent",
+			},
+		},
+	}
+
+	service := &HandlerService{
+		logger:       NewLogger(),
+		tokenFetcher: &mockTokenFetcher{token: "test-token"},
+	}
+	got, err := service.Handle(context.Background(), event)
+
+	s.NoError(err)
+	s.NotNil(got)
+	_, hasAPIKey := event.Details.Parameters["apiKey"]
+	_, hasOAuthID := event.Details.Parameters["oauthClientId"]
+	_, hasOAuthSecret := event.Details.Parameters["oauthClientSecret"]
+	s.False(hasAPIKey, "apiKey must be stripped from Parameters so a later log of the event can't leak it")
+	s.False(hasOAuthID, "oauthClientId must be stripped from Parameters so a later log of the event can't leak it")
+	s.False(hasOAuthSecret, "oauthClientSecret must be stripped from Parameters so a later log of the event can't leak it")
+}
+
 func (s *MainTestSuite) TestHandlerService_Handle_WithAPIDomain_customer_profile() {
 	// Test that handler correctly extracts region from apiDomain when apiDomain is api-customer-profile.cresta.com
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

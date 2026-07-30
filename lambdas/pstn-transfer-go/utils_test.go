@@ -91,6 +91,52 @@ func (s *UtilsTestSuite) TestGetFromEventParameterOrEnv() {
 	}
 }
 
+func (s *UtilsTestSuite) TestGetAndRemoveFromEventParameterOrEnv() {
+	s.Run("value from event parameters is returned and removed", func() {
+		event := events.ConnectEvent{
+			Details: events.ConnectDetails{
+				Parameters: map[string]string{
+					"apiKey":       "secret-value",
+					"unrelatedKey": "unrelated-value",
+				},
+			},
+		}
+
+		got := GetAndRemoveFromEventParameterOrEnv(event, "apiKey", "default-value")
+
+		s.Equal("secret-value", got)
+		_, stillPresent := event.Details.Parameters["apiKey"]
+		s.False(stillPresent, "apiKey should be deleted from Parameters after extraction, so a later log of the event can't leak it")
+		s.Equal("unrelated-value", event.Details.Parameters["unrelatedKey"], "other keys must be untouched")
+	})
+
+	s.Run("value from environment variable is returned without touching Parameters", func() {
+		event := events.ConnectEvent{
+			Details: events.ConnectDetails{
+				Parameters: map[string]string{},
+			},
+		}
+		os.Setenv("testEnvKey", "env-value")
+		defer os.Unsetenv("testEnvKey")
+
+		got := GetAndRemoveFromEventParameterOrEnv(event, "testEnvKey", "default-value")
+
+		s.Equal("env-value", got)
+	})
+
+	s.Run("default value when not in event or env", func() {
+		event := events.ConnectEvent{
+			Details: events.ConnectDetails{
+				Parameters: map[string]string{},
+			},
+		}
+
+		got := GetAndRemoveFromEventParameterOrEnv(event, "missingKey", "default-value")
+
+		s.Equal("default-value", got)
+	})
+}
+
 func (s *UtilsTestSuite) TestCopyMap() {
 	tests := []struct {
 		name         string

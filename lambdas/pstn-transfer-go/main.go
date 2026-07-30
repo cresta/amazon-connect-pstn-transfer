@@ -35,6 +35,14 @@ func handler(ctx context.Context, event events.ConnectEvent) (events.ConnectResp
 
 // Handle processes the Lambda event and returns a response.
 func (s *HandlerService) Handle(ctx context.Context, event events.ConnectEvent) (events.ConnectResponse, error) {
+	// Strip secret-bearing parameters before any logging of the event, mirroring ack-lambda's
+	// GetAndRemoveAPIKey()-before-first-log pattern — fixes the bug class that leaked ack-lambda's
+	// API key into prod logs for ~2 months in 2023. Values are captured here and reused below;
+	// they are deliberately not re-read from event.Details.Parameters later in this function.
+	apiKey := GetAndRemoveFromEventParameterOrEnv(event, "apiKey", "") // Deprecated: use oauthClientId/oauthClientSecret instead
+	oauthClientID := GetAndRemoveFromEventParameterOrEnv(event, "oauthClientId", "")
+	oauthClientSecret := GetAndRemoveFromEventParameterOrEnv(event, "oauthClientSecret", "")
+
 	s.logger.Debugf("Received event: %+v", event)
 
 	var result *events.ConnectResponse
@@ -45,14 +53,11 @@ func (s *HandlerService) Handle(ctx context.Context, event events.ConnectEvent) 
 	apiDomainParam := GetFromEventParameterOrEnv(event, "apiDomain", "")
 	authDomainParam := GetFromEventParameterOrEnv(event, "authDomain", "")
 
-	// Get OAuth credentials early to check if OAuth will be used for validation
-	oauthSecretArnCheck := GetFromEventParameterOrEnv(event, "oauthSecretArn", "")
-	oauthClientIDCheck := GetFromEventParameterOrEnv(event, "oauthClientId", "")
-	oauthClientSecretCheck := GetFromEventParameterOrEnv(event, "oauthClientSecret", "")
+	oauthSecretArn := GetFromEventParameterOrEnv(event, "oauthSecretArn", "")
 
 	// Validate that apiDomain and authDomain are used together (only when OAuth is used)
 	// If using API key, apiDomain alone is fine
-	willUseOAuth := oauthSecretArnCheck != "" || (oauthClientIDCheck != "" && oauthClientSecretCheck != "")
+	willUseOAuth := oauthSecretArn != "" || (oauthClientID != "" && oauthClientSecret != "")
 	if willUseOAuth {
 		if (apiDomainParam != "" && authDomainParam == "") || (apiDomainParam == "" && authDomainParam != "") {
 			return nil, fmt.Errorf("apiDomain and authDomain must be provided together")
@@ -112,11 +117,6 @@ func (s *HandlerService) Handle(ctx context.Context, event events.ConnectEvent) 
 	if action == "" {
 		return nil, fmt.Errorf("action is required")
 	}
-
-	apiKey := GetFromEventParameterOrEnv(event, "apiKey", "") // Deprecated: use oauthClientId/oauthClientSecret instead
-	oauthSecretArn := GetFromEventParameterOrEnv(event, "oauthSecretArn", "")
-	oauthClientID := GetFromEventParameterOrEnv(event, "oauthClientId", "")
-	oauthClientSecret := GetFromEventParameterOrEnv(event, "oauthClientSecret", "")
 
 	virtualAgentName := GetFromEventParameterOrEnv(event, "virtualAgentName", "")
 	if virtualAgentName == "" {

@@ -32,6 +32,21 @@ func GetFromEventParameterOrEnv(event events.ConnectEvent, key, defaultValue str
 	return defaultValue
 }
 
+// GetAndRemoveFromEventParameterOrEnv behaves like GetFromEventParameterOrEnv, but also
+// deletes the key from event.Details.Parameters when found there. Use this for secret-bearing
+// parameters (e.g. apiKey, oauthClientId/Secret) so a later `%+v` log of the event can't leak
+// them — mirrors the ack-lambda GetAndRemoveAPIKey() pattern, called before the first log line.
+func GetAndRemoveFromEventParameterOrEnv(event events.ConnectEvent, key, defaultValue string) string {
+	if value, ok := event.Details.Parameters[key]; ok {
+		delete(event.Details.Parameters, key)
+		return value
+	}
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
 func CopyMap(original map[string]string, filteredKeys map[string]bool) map[string]any {
 	result := make(map[string]any)
 	for k, v := range original {
