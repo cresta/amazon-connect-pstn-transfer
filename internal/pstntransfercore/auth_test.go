@@ -1,4 +1,4 @@
-package main
+package pstntransfercore
 
 import (
 	"context"
@@ -17,6 +17,21 @@ type AuthTestSuite struct {
 
 func TestAuthTestSuite(t *testing.T) {
 	suite.Run(t, new(AuthTestSuite))
+}
+
+// mockTokenFetcher is an OAuth2TokenFetcher test double shared by this package's test files.
+// Each lambda's own main_test.go (a different package) keeps its own trivial copy rather
+// than importing this one, since it's test-only scaffolding not worth exporting.
+type mockTokenFetcher struct {
+	token string
+	err   error
+}
+
+func (m *mockTokenFetcher) GetToken(ctx context.Context, authDomain, clientID, clientSecret string) (string, error) {
+	if m.err != nil {
+		return "", m.err
+	}
+	return m.token, nil
 }
 
 func (s *AuthTestSuite) TestOAuth2TokenFetcher_GetToken() {

@@ -1,4 +1,4 @@
-package main
+package pstntransfercore
 
 // FetchAIAgentHandoffResponse represents the API response for fetching AI agent handoff data.
 type FetchAIAgentHandoffResponse struct {

@@ -194,3 +194,4 @@ coverage/
 
 # Ignore Go implementation
 lambdas/pstn-transfer-go/pstn-transfer-go
+lambdas/pstn-transfer-hub-go/pstn-transfer-hub-go

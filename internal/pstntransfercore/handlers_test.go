@@ -1,52 +1,23 @@
-package main
+package pstntransfercore
 
 import (
 	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
-	"runtime"
-	"strings"
 	"testing"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/stretchr/testify/suite"
 )
 
-// readVersionFromFile reads the VERSION file from the project root
-func readVersionFromFile() string {
-	// Get the current test file directory
-	_, filename, _, _ := runtime.Caller(0)
-	testDir := filepath.Dir(filename)
-	// Navigate to project root: lambdas/pstn-transfer-go -> lambdas -> project root
-	projectRoot := filepath.Join(testDir, "..", "..")
-	versionPath := filepath.Join(projectRoot, "VERSION")
-	versionBytes, err := os.ReadFile(versionPath)
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(versionBytes))
-}
+// testVersion stands in for the real ldflags-injected version, which each lambda's own
+// main.go now owns and passes into NewHandlers explicitly — this package no longer has a
+// package-level Version var of its own.
+const testVersion = "test-version"
 
 type HandlersTestSuite struct {
 	suite.Suite
-	originalVersion string
-}
-
-func (s *HandlersTestSuite) SetupTest() {
-	// Set Version to match VERSION file for tests (since ldflags aren't used in test builds)
-	s.originalVersion = Version
-	Version = readVersionFromFile()
-	if Version == "" {
-		Version = "unknown"
-	}
-}
-
-func (s *HandlersTestSuite) TearDownTest() {
-	// Restore original version
-	Version = s.originalVersion
 }
 
 func TestHandlersTestSuite(t *testing.T) {
@@ -138,12 +109,10 @@ func (s *HandlersTestSuite) TestGetPSTNTransferData() {
 				_, ok = parameters["region"]
 				s.False(ok, "region should be filtered out")
 
-				// Verify version is present in ccaasMetadata and matches VERSION file
+				// Verify version is present in ccaasMetadata and matches what was passed to NewHandlers
 				version, ok := ccaasMetadata["version"].(string)
 				s.True(ok, "expected version in ccaasMetadata")
-				s.NotEmpty(version, "version should not be empty")
-				expectedVersion := readVersionFromFile()
-				s.Equal(expectedVersion, version, "version should match VERSION file")
+				s.Equal(testVersion, version, "version should match what NewHandlers was given")
 
 				w.WriteHeader(tt.mockStatusCode)
 				tt.mockResponse(w)
@@ -162,7 +131,7 @@ func (s *HandlersTestSuite) TestGetPSTNTransferData() {
 			}
 
 			supportedDtmfChars := "0123456789*"
-			handlers := NewHandlers(logger, tt.authConfig, domain, customer, profile, virtualAgentID, supportedDtmfChars, event)
+			handlers := NewHandlers(logger, tt.authConfig, domain, customer, profile, virtualAgentID, supportedDtmfChars, testVersion, event)
 			// Override the apiClient to use the test server's http client with auth middleware
 			// Create a retry client with auth, but override the underlying http.Client for testing
 			testClient := NewRetryHTTPClient(WithLogger(logger), WithAuth(tt.authConfig))
@@ -285,7 +254,7 @@ func (s *HandlersTestSuite) TestGetHandoffData() {
 			}
 			// GetHandoffData doesn't use virtualAgentID, but we need to pass it to NewHandlers
 			supportedDtmfChars := "0123456789*"
-			handlers := NewHandlers(logger, tt.authConfig, domain, tt.customer, tt.profile, "", supportedDtmfChars, event)
+			handlers := NewHandlers(logger, tt.authConfig, domain, tt.customer, tt.profile, "", supportedDtmfChars, testVersion, event)
 			// Override the apiClient to use the test server's http client with auth middleware
 			// Create a retry client with auth, but override the underlying http.Client for testing
 			testClient := NewRetryHTTPClient(WithLogger(logger), WithAuth(tt.authConfig))

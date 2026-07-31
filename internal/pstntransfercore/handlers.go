@@ -1,4 +1,4 @@
-package main
+package pstntransfercore
 
 import (
 	"context"
@@ -29,11 +29,15 @@ type Handlers struct {
 	profileID          string
 	virtualAgentID     string
 	supportedDtmfChars string
+	version            string
 	event              events.ConnectEvent
 }
 
-// NewHandlers creates a new Handlers instance.
-func NewHandlers(logger *Logger, authConfig *AuthConfig, domain, customerID, profileID, virtualAgentID, supportedDtmfChars string, event events.ConnectEvent) *Handlers {
+// NewHandlers creates a new Handlers instance. version is the calling binary's build
+// version (each lambda's own main.go sets this via its own ldflags-injected package-level
+// var) — passed in explicitly rather than read from a package-level var here, since this
+// package is now shared across multiple independently-versioned Lambda binaries.
+func NewHandlers(logger *Logger, authConfig *AuthConfig, domain, customerID, profileID, virtualAgentID, supportedDtmfChars, version string, event events.ConnectEvent) *Handlers {
 	apiClient, err := NewCrestaAPIClient(logger, authConfig)
 	if err != nil {
 		// This should never happen as authConfig is validated before calling NewHandlers
@@ -47,6 +51,7 @@ func NewHandlers(logger *Logger, authConfig *AuthConfig, domain, customerID, pro
 		profileID:          profileID,
 		virtualAgentID:     virtualAgentID,
 		supportedDtmfChars: supportedDtmfChars,
+		version:            version,
 		event:              event,
 	}
 }
@@ -74,7 +79,7 @@ func (h *Handlers) GetPSTNTransferData(ctx context.Context) (*events.ConnectResp
 	}
 	ccaasMetadata["parameters"] = filteredParameters
 	// Add version (with fallback if not set at build time)
-	version := Version
+	version := h.version
 	if version == "" {
 		version = "unknown"
 	}

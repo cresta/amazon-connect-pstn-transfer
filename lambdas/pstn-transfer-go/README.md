@@ -169,12 +169,7 @@ You can also deploy the Lambda function manually through the AWS Console. Follow
 
 ## Structure
 
-- `main.go` - Lambda handler entry point
-- `handlers.go` - Business logic handlers for each action
-- `client.go` - API client for making HTTP requests
-- `httpclient.go` - HTTP client with retry logic
-- `auth.go` - OAuth 2 authentication with token caching
-- `logger.go` - Logging utility
-- `utils.go` - Utility functions (validation, parsing, etc.)
-- `models.go` - Go type definitions
-- `*_test.go` - Test files
+- `main.go` - Lambda handler entry point: reads Parameters/env vars, resolves auth (API key or OAuth 2), and dispatches to the shared handlers.
+- `*_test.go` - Tests for the above.
+
+Everything else — business logic handlers, the HTTP client with retry logic, OAuth 2 token caching, validation/parsing utilities, and type definitions — lives in [`internal/pstntransfercore`](../../internal/pstntransfercore), a package shared with [`pstn-transfer-hub-go`](../pstn-transfer-hub-go). See that package's doc comments for a file-by-file breakdown. This lambda's `main.go` is the only place that knows about the deprecated `apiKey` auth path; `pstntransfercore` supports it (via `AuthConfig.APIKey`) but doesn't require any caller to use it.

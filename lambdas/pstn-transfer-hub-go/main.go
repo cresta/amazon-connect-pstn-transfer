@@ -36,12 +36,17 @@ func handler(ctx context.Context, event events.ConnectEvent) (events.ConnectResp
 }
 
 // Handle processes the Lambda event and returns a response.
+//
+// Unlike pstn-transfer-go, this Lambda does not accept the deprecated apiKey credential —
+// see README.md for why. It still defensively strips a stray apiKey parameter (if a flow
+// happens to pass one) before logging, alongside the OAuth credentials, so nothing sensitive
+// reaches the debug log either way.
 func (s *HandlerService) Handle(ctx context.Context, event events.ConnectEvent) (events.ConnectResponse, error) {
 	// Strip secret-bearing parameters before any logging of the event, mirroring ack-lambda's
 	// GetAndRemoveAPIKey()-before-first-log pattern — fixes the bug class that leaked ack-lambda's
 	// API key into prod logs for ~2 months in 2023. Values are captured here and reused below;
 	// they are deliberately not re-read from event.Details.Parameters later in this function.
-	apiKey := core.GetAndRemoveFromEventParameterOrEnv(event, "apiKey", "") // Deprecated: use oauthClientId/oauthClientSecret instead
+	_ = core.GetAndRemoveFromEventParameterOrEnv(event, "apiKey", "") // not a supported credential here; scrubbed defensively only
 	oauthClientID := core.GetAndRemoveFromEventParameterOrEnv(event, "oauthClientId", "")
 	oauthClientSecret := core.GetAndRemoveFromEventParameterOrEnv(event, "oauthClientSecret", "")
 
@@ -57,8 +62,7 @@ func (s *HandlerService) Handle(ctx context.Context, event events.ConnectEvent) 
 
 	oauthSecretArn := core.GetFromEventParameterOrEnv(event, "oauthSecretArn", "")
 
-	// Validate that apiDomain and authDomain are used together (only when OAuth is used)
-	// If using API key, apiDomain alone is fine
+	// Validate that apiDomain and authDomain are used together
 	willUseOAuth := oauthSecretArn != "" || (oauthClientID != "" && oauthClientSecret != "")
 	if willUseOAuth {
 		if (apiDomainParam != "" && authDomainParam == "") || (apiDomainParam == "" && authDomainParam != "") {
@@ -142,8 +146,7 @@ func (s *HandlerService) Handle(ctx context.Context, event events.ConnectEvent) 
 		return nil, err
 	}
 
-	// Either API key (deprecated) or OAuth 2 credentials must be provided
-	// Priority: Secrets Manager > Environment/Parameters > API Key (deprecated)
+	// OAuth 2 credentials must be provided. Priority: Secrets Manager > Environment/Parameters.
 	var authConfig *core.AuthConfig
 	resolvedOAuthClientID := oauthClientID
 	resolvedOAuthClientSecret := oauthClientSecret
@@ -161,32 +164,24 @@ func (s *HandlerService) Handle(ctx context.Context, event events.ConnectEvent) 
 		s.logger.Infof("Successfully retrieved OAuth credentials from Secrets Manager")
 	}
 
-	if resolvedOAuthClientID != "" && resolvedOAuthClientSecret != "" {
-		// Use OAuth 2 authentication
-		// Determine auth domain: use provided authDomain, or build from region
-		var finalAuthDomain string
-		if authDomain != "" {
-			finalAuthDomain = authDomain
-		} else {
-			// Build auth domain from region
-			authRegion := core.GetAuthRegion(region)
-			finalAuthDomain = fmt.Sprintf("https://auth.%s.cresta.ai", authRegion)
-		}
-		s.logger.Infof("Using OAuth 2 authentication")
-		authConfig = &core.AuthConfig{
-			AuthDomain:        finalAuthDomain,
-			OAuthClientID:     resolvedOAuthClientID,
-			OAuthClientSecret: resolvedOAuthClientSecret,
-			TokenFetcher:      s.tokenFetcher,
-		}
-	} else if apiKey != "" {
-		// Use API key authentication (deprecated)
-		s.logger.Warnf("Using API key authentication (deprecated)")
-		authConfig = &core.AuthConfig{
-			APIKey: apiKey,
-		}
+	if resolvedOAuthClientID == "" || resolvedOAuthClientSecret == "" {
+		return nil, fmt.Errorf("either oauthClientId/oauthClientSecret or oauthSecretArn must be provided")
+	}
+
+	// Determine auth domain: use provided authDomain, or build from region
+	var finalAuthDomain string
+	if authDomain != "" {
+		finalAuthDomain = authDomain
 	} else {
-		return nil, fmt.Errorf("either apiKey (deprecated), oauthClientId/oauthClientSecret, or oauthSecretArn must be provided")
+		authRegion := core.GetAuthRegion(region)
+		finalAuthDomain = fmt.Sprintf("https://auth.%s.cresta.ai", authRegion)
+	}
+	s.logger.Infof("Using OAuth 2 authentication")
+	authConfig = &core.AuthConfig{
+		AuthDomain:        finalAuthDomain,
+		OAuthClientID:     resolvedOAuthClientID,
+		OAuthClientSecret: resolvedOAuthClientSecret,
+		TokenFetcher:      s.tokenFetcher,
 	}
 
 	// Get supportedDtmfChars from environment variable only, default to "0123456789*"
