@@ -116,16 +116,34 @@ func (h *Handlers) GetHandoffData(ctx context.Context) (*events.ConnectResponse,
 		return nil, err
 	}
 
-	var result *FetchAIAgentHandoffResponse
-	if err := json.Unmarshal(body, &result); err != nil {
+	var parsed map[string]any
+	if err := json.Unmarshal(body, &parsed); err != nil {
 		return nil, fmt.Errorf("error unmarshalling response body: %v", err)
 	}
-	h.logger.Debugf("Received response: %+v", result)
+	h.logger.Debugf("Received response: %+v", parsed)
+
+	// Validate the response structure, matching the TypeScript and Python handlers.
+	handoff, ok := parsed["handoff"].(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("invalid handoff response structure: %s", string(body))
+	}
+	fields := make(map[string]string, len(requiredHandoffFields))
+	for _, field := range requiredHandoffFields {
+		value, ok := handoff[field].(string)
+		if !ok {
+			return nil, fmt.Errorf("invalid handoff response: missing or invalid required fields (conversation, conversationCorrelationId, summary, transferTarget)")
+		}
+		fields[field] = value
+	}
 
 	return &events.ConnectResponse{
-		"handoff_conversation":              result.Handoff.Conversation,
-		"handoff_conversationCorrelationId": result.Handoff.ConversationCorrelationID,
-		"handoff_summary":                   result.Handoff.Summary,
-		"handoff_transferTarget":            result.Handoff.TransferTarget,
+		"handoff_conversation":              fields["conversation"],
+		"handoff_conversationCorrelationId": fields["conversationCorrelationId"],
+		"handoff_summary":                   fields["summary"],
+		"handoff_transferTarget":            fields["transferTarget"],
 	}, nil
 }
+
+// requiredHandoffFields are the handoff fields that must be present as strings in a
+// fetchAIAgentHandoff response.
+var requiredHandoffFields = []string{"conversation", "conversationCorrelationId", "summary", "transferTarget"}
