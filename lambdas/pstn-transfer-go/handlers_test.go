@@ -256,6 +256,74 @@ func (s *HandlersTestSuite) TestGetHandoffData() {
 			mockStatusCode: http.StatusNotFound,
 			wantErr:        true,
 		},
+		{
+			name: "missing handoff field",
+			authConfig: &AuthConfig{
+				APIKey: "test-api-key",
+			},
+			domain:   "https://api.example.com",
+			customer: "test-customer",
+			profile:  "test-profile",
+			eventData: &events.ConnectContactData{
+				ContactID: "test-contact-id",
+			},
+			mockResponse: func(w http.ResponseWriter) {
+				w.Write([]byte(`{}`))
+			},
+			mockStatusCode: http.StatusOK,
+			wantErr:        true,
+		},
+		{
+			name: "null response body",
+			authConfig: &AuthConfig{
+				APIKey: "test-api-key",
+			},
+			domain:   "https://api.example.com",
+			customer: "test-customer",
+			profile:  "test-profile",
+			eventData: &events.ConnectContactData{
+				ContactID: "test-contact-id",
+			},
+			mockResponse: func(w http.ResponseWriter) {
+				w.Write([]byte(`null`))
+			},
+			mockStatusCode: http.StatusOK,
+			wantErr:        true,
+		},
+		{
+			name: "missing required handoff fields",
+			authConfig: &AuthConfig{
+				APIKey: "test-api-key",
+			},
+			domain:   "https://api.example.com",
+			customer: "test-customer",
+			profile:  "test-profile",
+			eventData: &events.ConnectContactData{
+				ContactID: "test-contact-id",
+			},
+			mockResponse: func(w http.ResponseWriter) {
+				w.Write([]byte(`{"handoff":{"conversation":"conversation-id"}}`))
+			},
+			mockStatusCode: http.StatusOK,
+			wantErr:        true,
+		},
+		{
+			name: "non-string handoff field",
+			authConfig: &AuthConfig{
+				APIKey: "test-api-key",
+			},
+			domain:   "https://api.example.com",
+			customer: "test-customer",
+			profile:  "test-profile",
+			eventData: &events.ConnectContactData{
+				ContactID: "test-contact-id",
+			},
+			mockResponse: func(w http.ResponseWriter) {
+				w.Write([]byte(`{"handoff":{"conversation":"conversation-id","conversationCorrelationId":"correlation-id","summary":"test summary","transferTarget":42}}`))
+			},
+			mockStatusCode: http.StatusOK,
+			wantErr:        true,
+		},
 	}
 
 	for _, tt := range tests {
